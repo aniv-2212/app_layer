@@ -1,4 +1,4 @@
-import { FileSearch, Filter, Logs, Search, ShieldAlert, TerminalSquare } from 'lucide-react'
+import { Filter, Logs, Search, ShieldAlert, TerminalSquare } from 'lucide-react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
@@ -61,8 +61,8 @@ export function LogAnalysisPage() {
         <div className="rounded-[24px] border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
           <div className="mb-3 flex items-center gap-2"><Logs className="h-4 w-4 text-cyan-300" /> Log explorer query builder</div>
           <div className="space-y-2">
-            <div className="rounded-[20px] border border-white/10 bg-slate-950/80 px-4 py-3">event.type = "auth" AND severity >= 3</div>
-            <div className="rounded-[20px] border border-white/10 bg-slate-950/80 px-4 py-3">source = "firewall" OR source = "api"</div>
+            <div className="rounded-[20px] border border-white/10 bg-slate-950/80 px-4 py-3">{'event.type = "auth" AND severity >= 3'}</div>
+            <div className="rounded-[20px] border border-white/10 bg-slate-950/80 px-4 py-3">{'source = "firewall" OR source = "api"'}</div>
           </div>
         </div>
       </ChartCard>

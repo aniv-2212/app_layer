@@ -1,20 +1,21 @@
 import { Activity, AlertTriangle, Bot, FileText, Globe2, LayoutDashboard, LogOut, Radar, ShieldCheck, ShieldAlert, SlidersHorizontal, Sparkles, TerminalSquare, TrendingUp, UserCircle2 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { NavLink } from 'react-router-dom'
 
 const items = [
-  { label: 'Dashboard', icon: LayoutDashboard },
-  { label: 'Live Threat Map', icon: Globe2 },
-  { label: 'Application Layer', icon: ShieldCheck, active: true },
-  { label: 'Threat Intelligence', icon: Radar },
-  { label: 'Attack Analytics', icon: TrendingUp },
-  { label: 'Vulnerability Center', icon: ShieldAlert },
-  { label: 'AI Threat Detection', icon: Sparkles },
-  { label: 'Malware Analysis', icon: Bot },
-  { label: 'Network Monitoring', icon: Activity },
-  { label: 'Incident Response', icon: AlertTriangle },
-  { label: 'Log Analysis', icon: TerminalSquare },
-  { label: 'Reports', icon: FileText },
-  { label: 'Settings', icon: SlidersHorizontal },
+  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
+  { label: 'Live Threat Map', to: '/live-threat-map', icon: Globe2 },
+  { label: 'Application Layer', to: '/application-layer', icon: ShieldCheck },
+  { label: 'Threat Intelligence', to: '/threat-intelligence', icon: Radar },
+  { label: 'Attack Analytics', to: '/attack-analytics', icon: TrendingUp },
+  { label: 'Vulnerability Center', to: '/vulnerability-center', icon: ShieldAlert },
+  { label: 'AI Threat Detection', to: '/ai-threat-detection', icon: Sparkles },
+  { label: 'Malware Analysis', to: '/malware-analysis', icon: Bot },
+  { label: 'Network Monitoring', to: '/network-monitoring', icon: Activity },
+  { label: 'Incident Response', to: '/incident-response', icon: AlertTriangle },
+  { label: 'Log Analysis', to: '/log-analysis', icon: TerminalSquare },
+  { label: 'Reports', to: '/reports', icon: FileText },
+  { label: 'Settings', to: '/settings', icon: SlidersHorizontal },
 ]
 
 export function Sidebar() {
@@ -33,10 +34,10 @@ export function Sidebar() {
         {items.map((item) => {
           const Icon = item.icon
           return (
-            <button key={item.label} className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm transition ${item.active ? 'bg-white/15 text-white shadow-lg shadow-cyan-500/10' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`}>
+            <NavLink key={item.label} to={item.to} className={({ isActive }) => `flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm transition ${isActive ? 'bg-white/15 text-white shadow-lg shadow-cyan-500/10' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`}>
               <Icon className="h-4 w-4" />
               <span>{item.label}</span>
-            </button>
+            </NavLink>
           )
         })}
       </nav>

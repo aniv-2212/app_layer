@@ -1,4 +1,4 @@
-import { Brain, Cpu, Radar, ShieldAlert, Sparkles, TrendingUp } from 'lucide-react'
+import { Brain, Cpu, Radar, Sparkles } from 'lucide-react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'

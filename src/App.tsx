@@ -1,69 +1,55 @@
-import { useEffect, useState } from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Sidebar } from './components/layout/Sidebar'
 import { Navbar } from './components/layout/Navbar'
-import { KPIRow } from './components/cards/KPIRow'
-import { MapFilters } from './components/filters/MapFilters'
-import { ApplicationAttackMap } from './components/maps/ApplicationAttackMap'
-import { CountryDrawer } from './components/maps/CountryDrawer'
-import { MapLegend } from './components/maps/MapLegend'
-import { RequestChart } from './components/charts/RequestChart'
-import { AttackTrendChart } from './components/charts/AttackTrendChart'
-import { AttackTypeChart } from './components/charts/AttackTypeChart'
-import { HTTPMethodChart } from './components/charts/HTTPMethodChart'
-import { StatusCodeChart } from './components/charts/StatusCodeChart'
-import { TopCountriesChart } from './components/charts/TopCountriesChart'
-import { LiveEvents } from './components/live-events/LiveEvents'
-import { AttackLogTable } from './components/tables/AttackLogTable'
-import { AIInsights } from './components/insights/AIInsights'
-import { useSocketStore } from './store/socketStore'
-import { LoadingSkeleton } from './components/LoadingSkeleton'
+import { DashboardPage } from './pages/Dashboard'
+import { LiveThreatMapPage } from './pages/LiveThreatMap'
+import { ThreatIntelligencePage } from './pages/ThreatIntelligence'
+import { AttackAnalyticsPage } from './pages/AttackAnalytics'
+import { VulnerabilityCenterPage } from './pages/VulnerabilityCenter'
+import { AIThreatDetectionPage } from './pages/AIThreatDetection'
+import { MalwareAnalysisPage } from './pages/MalwareAnalysis'
+import { NetworkMonitoringPage } from './pages/NetworkMonitoring'
+import { IncidentResponsePage } from './pages/IncidentResponse'
+import { LogAnalysisPage } from './pages/LogAnalysis'
+import { ReportsPage } from './pages/Reports'
+import { SettingsPage } from './pages/Settings'
+import { ApplicationLayerPage } from './pages/ApplicationLayer'
 import './App.css'
 
-function App() {
-  const connect = useSocketStore((state) => state.connect)
-  const [ready, setReady] = useState(false)
-
-  useEffect(() => {
-    connect()
-    const timer = window.setTimeout(() => setReady(true), 700)
-    return () => window.clearTimeout(timer)
-  }, [connect])
-
+function AppShell() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.18),_transparent_35%),linear-gradient(135deg,_#020617_0%,_#0f172a_45%,_#111827_100%)] px-3 py-4 text-slate-100 sm:px-4 lg:px-6">
       <div className="mx-auto flex max-w-7xl gap-4">
         <Sidebar />
         <main className="flex-1">
           <Navbar />
-          {!ready ? <LoadingSkeleton /> : (
-            <>
-              <KPIRow />
-              <MapFilters />
-              <div className="mb-6 grid gap-6 xl:grid-cols-[2fr_1fr]">
-                <ApplicationAttackMap />
-                <LiveEvents />
-              </div>
-              <div className="mb-6 grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-                <RequestChart />
-                <AttackTrendChart />
-              </div>
-              <div className="mb-6 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-                <AttackTypeChart />
-                <HTTPMethodChart />
-                <StatusCodeChart />
-                <TopCountriesChart />
-              </div>
-              <div className="mb-6 grid gap-6 xl:grid-cols-[1.5fr_0.85fr]">
-                <AttackLogTable />
-                <AIInsights />
-              </div>
-              <MapLegend />
-            </>
-          )}
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/live-threat-map" element={<LiveThreatMapPage />} />
+            <Route path="/application-layer" element={<ApplicationLayerPage />} />
+            <Route path="/threat-intelligence" element={<ThreatIntelligencePage />} />
+            <Route path="/attack-analytics" element={<AttackAnalyticsPage />} />
+            <Route path="/vulnerability-center" element={<VulnerabilityCenterPage />} />
+            <Route path="/ai-threat-detection" element={<AIThreatDetectionPage />} />
+            <Route path="/malware-analysis" element={<MalwareAnalysisPage />} />
+            <Route path="/network-monitoring" element={<NetworkMonitoringPage />} />
+            <Route path="/incident-response" element={<IncidentResponsePage />} />
+            <Route path="/log-analysis" element={<LogAnalysisPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Routes>
         </main>
       </div>
-      <CountryDrawer />
     </div>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
   )
 }
 

@@ -1,4 +1,4 @@
-import { BarChart3, FileText, FileUp, ShieldCheck, Sparkles } from 'lucide-react'
+import { BarChart3, FileText, FileUp, Sparkles } from 'lucide-react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'

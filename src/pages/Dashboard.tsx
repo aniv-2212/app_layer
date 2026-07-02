@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Brain, Bot, CircleDashed, Cpu, ShieldCheck, Sparkles, TrendingUp, Waves } from 'lucide-react'
+import { Activity, Brain, Bot, CircleDashed, Cpu, ShieldCheck, Sparkles, TrendingUp, Waves } from 'lucide-react'
 import { PageShell } from '../components/layout/PageShell'
 import { KPICard } from '../components/cards/KPICard'
 import { StatusCard } from '../components/cards/StatusCard'

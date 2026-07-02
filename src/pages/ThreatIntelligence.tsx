@@ -1,4 +1,4 @@
-import { AlertTriangle, Bug, Radar, ShieldAlert, Sparkles, TrendingUp, Virus } from 'lucide-react'
+import { Bug, TrendingUp } from 'lucide-react'
 import { PageShell } from '../components/layout/PageShell'
 import { KPICard } from '../components/cards/KPICard'
 import { ChartCard } from '../components/cards/ChartCard'
@@ -56,7 +56,7 @@ export function ThreatIntelligencePage() {
         </ChartCard>
         <ChartCard title="Malware Families" subtitle="Observed relationships">
           <div className="space-y-2 text-sm text-slate-300">
-            <div className="flex items-center gap-2"><Virus className="h-4 w-4 text-fuchsia-300" /> LoaderX</div>
+            <div className="flex items-center gap-2"><Bug className="h-4 w-4 text-fuchsia-300" /> LoaderX</div>
             <div className="flex items-center gap-2"><Bug className="h-4 w-4 text-cyan-300" /> Gorgon</div>
           </div>
         </ChartCard>

@@ -1,4 +1,4 @@
-import { Activity, Cpu, Globe2, Network, Radio, ShieldAlert, TrendingUp } from 'lucide-react'
+import { Activity, Network, Radio, ShieldAlert } from 'lucide-react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'

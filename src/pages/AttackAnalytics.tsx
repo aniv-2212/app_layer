@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Globe2, ShieldCheck, TrendingUp } from 'lucide-react'
+import { Activity, Globe2, ShieldCheck, TrendingUp } from 'lucide-react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
