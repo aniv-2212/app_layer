@@ -1,9 +1,19 @@
 import { KeyRound, MoonStar, ShieldCheck, UserCircle2, Users } from 'lucide-react'
+import { useState } from 'react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
+import { Toast } from '../components/ui/Toast'
 
 export function SettingsPage() {
+  const [saved, setSaved] = useState(false)
+  const [activeTab, setActiveTab] = useState<'preferences' | 'security'>('preferences')
+
+  const handleSave = () => {
+    setSaved(true)
+    window.setTimeout(() => setSaved(false), 1400)
+  }
+
   return (
     <PageShell
       title="Settings"

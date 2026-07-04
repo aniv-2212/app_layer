@@ -1,0 +1,7 @@
+{
+  "items": [
+    {"id":"inc-204","title":"Credential abuse","priority":"P1","status":"Open","analyst":"A. Patel","timeline":["Triage complete","Containment in progress","Evidence collected"],"summary":"Multiple failed logins triggered from a single botnet."},
+    {"id":"inc-208","title":"Lateral movement","priority":"P2","status":"Monitoring","analyst":"N. Chen","timeline":["Escalation","Watchlist added","Containment verified"],"summary":"Suspicious host-to-host movement identified in East Asia."},
+    {"id":"inc-211","title":"Suspicious admin login","priority":"P3","status":"Closed","analyst":"S. Rivera","timeline":["Resolved","False positive","Archived"],"summary":"User activity matched a known maintenance window."}
+  ]
+}

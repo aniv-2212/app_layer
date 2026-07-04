@@ -1,16 +1,27 @@
 import { ClipboardList, Clock3, ShieldCheck, Users } from 'lucide-react'
+import { useState } from 'react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
+import { Toast } from '../components/ui/Toast'
 
 export function IncidentResponsePage() {
+  const [creating, setCreating] = useState(false)
+  const [toastOpen, setToastOpen] = useState(false)
+
+  const handleCreate = () => {
+    setCreating(true)
+    setToastOpen(true)
+    window.setTimeout(() => setCreating(false), 1000)
+  }
+
   return (
     <PageShell
       title="Incident Response"
       subtitle="SOC case management, analyst assignments, evidence review, and recovery progress."
       actions={
-        <button className="rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white">
-          New Incident
+        <button onClick={handleCreate} className="rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white">
+          {creating ? 'Creating…' : 'New Incident'}
         </button>
       }
       filters={
@@ -30,7 +41,7 @@ export function IncidentResponsePage() {
         <ChartCard title="Incident Queue" subtitle="Priority-ranked cases">
           <div className="space-y-3 text-sm text-slate-300">
             {['IR-204 — Credential abuse', 'IR-208 — Lateral movement', 'IR-211 — Suspicious admin login'].map((item) => (
-              <div key={item} className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3">{item}</div>
+              <button key={item} onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">{item}</button>
             ))}
           </div>
         </ChartCard>
@@ -62,11 +73,12 @@ export function IncidentResponsePage() {
 
       <ChartCard title="Response Statistics" subtitle="Operational readiness and workload">
         <div className="flex flex-wrap gap-3">
-          <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">MTTR 34m</span>
-          <span className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-3 py-2 text-sm text-fuchsia-200">Escalations 7</span>
-          <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">Playbooks 12</span>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">MTTR 34m</button>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-3 py-2 text-sm text-fuchsia-200">Escalations 7</button>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">Playbooks 12</button>
         </div>
       </ChartCard>
+      <Toast message={creating ? 'Incident drafting in progress' : 'Incident created'} open={toastOpen} />
     </PageShell>
   )
 }

@@ -1,9 +1,21 @@
 import { Activity, Globe2, ShieldCheck, TrendingUp } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
+import { Toast } from '../components/ui/Toast'
+import { useAnalyticsStore } from '../store/analyticsStore'
 
 export function AttackAnalyticsPage() {
+  const [toastOpen, setToastOpen] = useState(false)
+  const timeRange = useAnalyticsStore((state) => state.timeRange)
+  const country = useAnalyticsStore((state) => state.country)
+  const analyticsItems = useMemo(() => [
+    { label: 'US — 14.8K', value: 'US' },
+    { label: 'DE — 9.2K', value: 'DE' },
+    { label: 'SG — 6.1K', value: 'SG' },
+  ], [])
+
   return (
     <PageShell
       title="Attack Analytics"
@@ -15,8 +27,8 @@ export function AttackAnalyticsPage() {
       }
       filters={
         <>
-          <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-sm text-cyan-300">30d period</span>
-          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">All regions</span>
+          <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-sm text-cyan-300">{timeRange} period</span>
+          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">{country}</span>
           <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">All vectors</span>
         </>
       }
@@ -43,8 +55,11 @@ export function AttackAnalyticsPage() {
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         <ChartCard title="Country Analytics" subtitle="High-risk geographies">
           <div className="space-y-2 text-sm text-slate-300">
-            <div className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3">US — 14.8K</div>
-            <div className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3">DE — 9.2K</div>
+            {analyticsItems.map((item) => (
+              <button key={item.value} onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">
+                {item.label}
+              </button>
+            ))}
           </div>
         </ChartCard>
         <ChartCard title="Attack Success Rate" subtitle="Observed breach attempts">
@@ -63,11 +78,12 @@ export function AttackAnalyticsPage() {
 
       <ChartCard title="Export Analytics" subtitle="Download summaries for reporting and investigations">
         <div className="flex flex-wrap gap-3">
-          <button className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-200">PDF report</button>
-          <button className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-4 py-2 text-sm text-fuchsia-200">CSV export</button>
-          <button className="rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-sm text-slate-300">Share snapshot</button>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-200">PDF report</button>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-4 py-2 text-sm text-fuchsia-200">CSV export</button>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-sm text-slate-300">Share snapshot</button>
         </div>
       </ChartCard>
+      <Toast message="Analytics export queued" open={toastOpen} />
     </PageShell>
   )
 }

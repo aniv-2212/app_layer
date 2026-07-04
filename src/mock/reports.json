@@ -1,0 +1,7 @@
+{
+  "items": [
+    {"id":"rep-1","name":"Weekly SOC Digest","type":"PDF","status":"Ready","date":"2026-06-30"},
+    {"id":"rep-2","name":"Threat Intel Summary","type":"CSV","status":"Generated","date":"2026-06-23"},
+    {"id":"rep-3","name":"Executive Overview","type":"JSON","status":"Scheduled","date":"2026-06-14"}
+  ]
+}

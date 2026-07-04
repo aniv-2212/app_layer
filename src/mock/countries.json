@@ -1,0 +1,10 @@
+{
+  "items": [
+    {"code":"All","name":"All Countries"},
+    {"code":"US","name":"United States"},
+    {"code":"DE","name":"Germany"},
+    {"code":"SG","name":"Singapore"},
+    {"code":"BR","name":"Brazil"},
+    {"code":"GB","name":"United Kingdom"}
+  ]
+}

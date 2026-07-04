@@ -1,0 +1,12 @@
+{
+  "items": [
+    {"id":"atk-1","type":"SQL Injection","severity":"Critical","country":"United States","requests":382,"region":"NA","time":"09:10"},
+    {"id":"atk-2","type":"Credential Stuffing","severity":"High","country":"Singapore","requests":216,"region":"APAC","time":"09:22"},
+    {"id":"atk-3","type":"DDoS Pulse","severity":"Critical","country":"Germany","requests":782,"region":"EMEA","time":"09:41"},
+    {"id":"atk-4","type":"XSS Probe","severity":"Medium","country":"Brazil","requests":118,"region":"LATAM","time":"10:03"}
+  ],
+  "series": [
+    {"name":"Requests","data":[240,260,310,290,340,360,380]},
+    {"name":"Blocked","data":[180,210,240,220,280,300,320]}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "kpis": [
+    {"id":"req","title":"Total Requests","value":"2.84M","change":"+12.4%","icon":"Globe2","sparkline":[20,42,38,64,78,76,92],"accent":"from-cyan-500 to-sky-600"},
+    {"id":"att","title":"Attack Requests","value":"184.2K","change":"+8.1%","icon":"ShieldAlert","sparkline":[12,18,15,24,22,31,34],"accent":"from-fuchsia-500 to-violet-600"},
+    {"id":"rate","title":"Attack Rate","value":"6.49%","change":"-1.2%","icon":"Activity","sparkline":[44,41,46,43,40,39,37],"accent":"from-amber-400 to-orange-600"},
+    {"id":"vis","title":"Unique Visitors","value":"918K","change":"+5.8%","icon":"Users","sparkline":[36,48,44,55,54,63,70],"accent":"from-emerald-500 to-teal-600"}
+  ],
+  "alerts": [
+    {"id":"a1","title":"Credential stuffing surge","detail":"Global login abuse from distributed IP clusters","time":"2m ago","severity":"Critical"},
+    {"id":"a2","title":"Suspicious lateral movement","detail":"Beaconing detected across East Asia fabric","time":"11m ago","severity":"High"},
+    {"id":"a3","title":"Unusual API burst","detail":"Large spike in payment endpoint access","time":"24m ago","severity":"Medium"}
+  ],
+  "activities": [
+    {"id":"ac1","title":"Rule updated","detail":"Detection logic tuned for auth anomalies","time":"08:21 UTC"},
+    {"id":"ac2","title":"AI model retrained","detail":"Behavior model improved confidence","time":"07:48 UTC"},
+    {"id":"ac3","title":"Threat score elevated","detail":"Multiple beacon patterns merged","time":"06:14 UTC"}
+  ]
+}

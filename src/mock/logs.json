@@ -1,0 +1,8 @@
+{
+  "items": [
+    {"id":"log-1","timestamp":"2026-07-02T08:05:10Z","source":"auth","type":"Authentication","severity":"Critical","message":"Multiple MFA failures for finance-admin","status":"Blocked"},
+    {"id":"log-2","timestamp":"2026-07-02T07:41:11Z","source":"firewall","type":"Firewall","severity":"High","message":"Rule 183 blocked 4.2K flows","status":"Observed"},
+    {"id":"log-3","timestamp":"2026-07-02T06:17:43Z","source":"windows","type":"Endpoint","severity":"Medium","message":"PowerShell execution flagged","status":"Reviewed"},
+    {"id":"log-4","timestamp":"2026-07-02T05:59:18Z","source":"api","type":"API","severity":"Low","message":"Unusual token refresh rate","status":"Open"}
+  ]
+}

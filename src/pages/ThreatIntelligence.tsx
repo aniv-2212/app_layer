@@ -1,10 +1,22 @@
 import { Bug, TrendingUp } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { PageShell } from '../components/layout/PageShell'
 import { KPICard } from '../components/cards/KPICard'
 import { ChartCard } from '../components/cards/ChartCard'
+import { Toast } from '../components/ui/Toast'
 import { seedKpis } from '../mock/data'
+import { useAnalyticsStore } from '../store/analyticsStore'
 
 export function ThreatIntelligencePage() {
+  const [selectedFeed, setSelectedFeed] = useState<string | null>(null)
+  const [toastOpen, setToastOpen] = useState(false)
+  const timeRange = useAnalyticsStore((state) => state.timeRange)
+  const feeds = useMemo(() => [
+    { id: 'cve', title: 'CVE-2026-4112 — Authentication bypass', badge: 'Critical' },
+    { id: 'zero', title: 'CVE-2026-4028 — Zero-day in web parser', badge: 'High' },
+    { id: 'priv', title: 'CVE-2026-3901 — Privilege escalation', badge: 'Medium' },
+  ], [])
+
   return (
     <PageShell
       title="Threat Intelligence"
@@ -17,7 +29,7 @@ export function ThreatIntelligencePage() {
       filters={
         <>
           <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-sm text-cyan-300">Critical CVEs 24</span>
-          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">High confidence</span>
+          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">{timeRange} window</span>
         </>
       }
       kpiSection={seedKpis.slice(4, 8).map((kpi) => (
@@ -27,8 +39,16 @@ export function ThreatIntelligencePage() {
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <ChartCard title="Latest CVEs" subtitle="Most relevant advisories"> 
           <div className="space-y-3">
-            {['CVE-2026-4112 — Authentication bypass', 'CVE-2026-4028 — Zero-day in web parser', 'CVE-2026-3901 — Privilege escalation'].map((item) => (
-              <div key={item} className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">{item}</div>
+            {feeds.map((item) => (
+              <button key={item.id} onClick={() => {
+                setSelectedFeed(item.id)
+                setToastOpen(true)
+              }} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left text-sm text-slate-300">
+                <div className="flex items-center justify-between gap-3">
+                  <span>{item.title}</span>
+                  <span className="text-cyan-300">{item.badge}</span>
+                </div>
+              </button>
             ))}
           </div>
         </ChartCard>
@@ -92,6 +112,7 @@ export function ThreatIntelligencePage() {
           <div className="rounded-[24px] border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">Medium 23</div>
         </div>
       </ChartCard>
+      <Toast message={selectedFeed ? `Feed ${selectedFeed} queued` : 'Feed import queued'} open={toastOpen} />
     </PageShell>
   )
 }

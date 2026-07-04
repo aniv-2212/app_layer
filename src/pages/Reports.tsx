@@ -1,16 +1,27 @@
 import { BarChart3, FileText, FileUp, Sparkles } from 'lucide-react'
+import { useState } from 'react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
+import { Toast } from '../components/ui/Toast'
 
 export function ReportsPage() {
+  const [generating, setGenerating] = useState(false)
+  const [toastOpen, setToastOpen] = useState(false)
+
+  const handleGenerate = () => {
+    setGenerating(true)
+    setToastOpen(true)
+    window.setTimeout(() => setGenerating(false), 1000)
+  }
+
   return (
     <PageShell
       title="Reports"
       subtitle="Executive summaries, scheduled reports, and export-ready SOC reporting."
       actions={
-        <button className="rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white">
-          Generate Report
+        <button onClick={handleGenerate} className="rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white">
+          {generating ? 'Generating…' : 'Generate Report'}
         </button>
       }
       filters={
@@ -30,7 +41,7 @@ export function ReportsPage() {
         <ChartCard title="Report Cards" subtitle="Core report packages">
           <div className="space-y-3 text-sm text-slate-300">
             {['Security posture summary', 'Threat intelligence digest', 'Executive incident overview'].map((item) => (
-              <div key={item} className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3">{item}</div>
+              <button key={item} onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">{item}</button>
             ))}
           </div>
         </ChartCard>
@@ -56,11 +67,12 @@ export function ReportsPage() {
 
       <ChartCard title="Historical Reports" subtitle="Previously generated packages">
         <div className="flex flex-wrap gap-3">
-          <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">2026-06-30</span>
-          <span className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-3 py-2 text-sm text-fuchsia-200">2026-06-23</span>
-          <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">2026-06-14</span>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">2026-06-30</button>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-3 py-2 text-sm text-fuchsia-200">2026-06-23</button>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">2026-06-14</button>
         </div>
       </ChartCard>
+      <Toast message={generating ? 'Report generation in progress' : 'Report generated'} open={toastOpen} />
     </PageShell>
   )
 }

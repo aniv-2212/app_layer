@@ -1,22 +1,35 @@
 import { Brain, Cpu, Radar, Sparkles } from 'lucide-react'
+import { useState } from 'react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
+import { Toast } from '../components/ui/Toast'
+import { useAnalyticsStore } from '../store/analyticsStore'
 
 export function AIThreatDetectionPage() {
+  const [training, setTraining] = useState(false)
+  const [toastOpen, setToastOpen] = useState(false)
+  const timeRange = useAnalyticsStore((state) => state.timeRange)
+
+  const handleTrain = () => {
+    setTraining(true)
+    setToastOpen(true)
+    window.setTimeout(() => setTraining(false), 1200)
+  }
+
   return (
     <PageShell
       title="AI Threat Detection"
       subtitle="Machine-learning insights, anomaly forecasting, and behavior-based triage."
       actions={
-        <button className="rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white">
-          Retrain Models
+        <button onClick={handleTrain} className="rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white">
+          {training ? 'Training…' : 'Retrain Models'}
         </button>
       }
       filters={
         <>
           <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-sm text-cyan-300">Confidence 92%</span>
-          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">Behavioral signals</span>
+          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">{timeRange} window</span>
         </>
       }
       kpiSection={[
@@ -41,8 +54,8 @@ export function AIThreatDetectionPage() {
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         <ChartCard title="AI Recommendation Panel" subtitle="Suggested playbooks">
           <div className="space-y-2 text-sm text-slate-300">
-            <div className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3">Disable suspect token</div>
-            <div className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3">Isolate compromised profile</div>
+            <button onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">Disable suspect token</button>
+            <button onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">Isolate compromised profile</button>
           </div>
         </ChartCard>
         <ChartCard title="Suspicious Users" subtitle="High-risk actor clusters">
@@ -58,11 +71,12 @@ export function AIThreatDetectionPage() {
 
       <ChartCard title="Behavior Analysis" subtitle="Observed activity clusters">
         <div className="flex flex-wrap gap-3">
-          <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">Credential abuse</span>
-          <span className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-3 py-2 text-sm text-fuchsia-200">Impossible travel</span>
-          <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">New device</span>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">Credential abuse</button>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-3 py-2 text-sm text-fuchsia-200">Impossible travel</button>
+          <button onClick={() => setToastOpen(true)} className="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">New device</button>
         </div>
       </ChartCard>
+      <Toast message={training ? 'Model training in progress' : 'Model training queued'} open={toastOpen} />
     </PageShell>
   )
 }
