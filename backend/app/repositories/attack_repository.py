@@ -32,6 +32,11 @@ class AttackRepository:
     def capacity(self) -> int:
         return self._max_size
 
+    @property
+    def stored_count(self) -> int:
+        with self._lock:
+            return len(self._attacks)
+
     async def add(self, attack: AttackEvent) -> AttackEvent:
         """Persist a new attack event."""
         with self._lock:

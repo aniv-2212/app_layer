@@ -1,9 +1,0 @@
-{
-  "items": [
-    {"id":"n1","title":"Critical Alert","detail":"Credential stuffing wave detected","time":"2m ago","severity":"critical"},
-    {"id":"n2","title":"SQL Injection","detail":"Multiple auth endpoints under test","time":"11m ago","severity":"high"},
-    {"id":"n3","title":"Bot Detected","detail":"New cluster observed from APAC","time":"24m ago","severity":"medium"},
-    {"id":"n4","title":"New CVE","detail":"CVE-2026-4099 is under active exploit","time":"1h ago","severity":"high"},
-    {"id":"n5","title":"Patch Available","detail":"Security update ready for edge gateway","time":"2h ago","severity":"low"}
-  ]
-}

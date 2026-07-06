@@ -1,4 +1,4 @@
-import { Bell, Download, MoonStar, Search, SunMedium, UserCircle2 } from 'lucide-react'
+import { Bell, Download, MoonStar, Search, SunMedium } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useLocation } from 'react-router-dom'
 import { useState } from 'react'

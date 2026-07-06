@@ -3,16 +3,14 @@ import { motion } from 'framer-motion'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { useMapStore } from '../../store/mapStore'
 import type { AttackEvent, CountrySummary } from '../../types'
-import { seedCountrySummaries } from '../../mock/data'
 
 export function ApplicationAttackMap() {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const eventFeed = useDashboardStore((state) => state.eventFeed)
+  const summaries = useDashboardStore((state) => state.countrySummaries)
   const setDrawerOpen = useMapStore((state) => state.setDrawerOpen)
   const setSelectedCountry = useMapStore((state) => state.setSelectedCountry)
   const setHoveredAttack = useMapStore((state) => state.setHoveredAttack)
-
-  const summaries = useMemo(() => seedCountrySummaries, [])
   const attackEvents = useMemo(() => eventFeed.slice(0, 5), [eventFeed])
 
   useEffect(() => {
@@ -67,7 +65,10 @@ export function ApplicationAttackMap() {
       </div>
       <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-3">
         {attackEvents.map((event) => (
-          <motion.button key={event.id} whileHover={{ y: -2, scale: 1.01 }} onMouseEnter={() => handleHover(event)} onClick={() => handleOpenDrawer(summaries[0])} className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-left text-sm text-slate-300 backdrop-blur">
+          <motion.button key={event.id} whileHover={{ y: -2, scale: 1.01 }} onMouseEnter={() => handleHover(event)} onClick={() => {
+            const summary = summaries.find((item) => item.country === event.destinationCountry) ?? summaries[0]
+            if (summary) handleOpenDrawer(summary)
+          }} className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-left text-sm text-slate-300 backdrop-blur">
             <div className="font-medium text-white">{event.attackType}</div>
             <div className="text-xs text-slate-500">{event.sourceCountry} → {event.destinationCountry}</div>
           </motion.button>

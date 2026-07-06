@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
-import { Toast } from '../components/ui/Toast'
 
 export function SettingsPage() {
   const [saved, setSaved] = useState(false)
@@ -19,14 +18,14 @@ export function SettingsPage() {
       title="Settings"
       subtitle="Fine-tune preferences, integrations, roles, and the operating model of the platform."
       actions={
-        <button className="rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white">
-          Save Changes
+        <button onClick={handleSave} className="rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white">
+          {saved ? 'Saved' : 'Save Changes'}
         </button>
       }
       filters={
         <>
-          <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-sm text-cyan-300">Preferences</span>
-          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">Security</span>
+          <button onClick={() => setActiveTab('preferences')} className={`rounded-full border px-3 py-1 text-sm ${activeTab === 'preferences' ? 'border-cyan-400/20 bg-cyan-500/10 text-cyan-300' : 'border-white/10 bg-slate-900/80 text-slate-300'}`}>Preferences</button>
+          <button onClick={() => setActiveTab('security')} className={`rounded-full border px-3 py-1 text-sm ${activeTab === 'security' ? 'border-cyan-400/20 bg-cyan-500/10 text-cyan-300' : 'border-white/10 bg-slate-900/80 text-slate-300'}`}>Security</button>
         </>
       }
       kpiSection={[

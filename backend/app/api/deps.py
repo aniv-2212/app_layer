@@ -7,6 +7,7 @@ from app.generators.random_data_generator import RandomDataGenerator
 from app.repositories.attack_repository import AttackRepository
 from app.repositories.country_repository import CountryRepository
 from app.services.attack_generator import AttackGenerator
+from app.services.external.intel_hub import IntelHub
 from app.services.heatmap_service import HeatmapService
 from app.services.replay_service import ReplayService
 from app.services.statistics_service import StatisticsService
@@ -45,6 +46,7 @@ class AppContainer:
             replay_service=self.replay_service,
             socket_manager=self.socket_manager,
         )
+        self.intel_hub = IntelHub(settings=self.settings, socket_manager=self.socket_manager)
 
 
 @lru_cache
@@ -78,3 +80,7 @@ def get_stream_service() -> StreamService:
 
 def get_socket_manager() -> SocketManager:
     return get_container().socket_manager
+
+
+def get_intel_hub() -> IntelHub:
+    return get_container().intel_hub

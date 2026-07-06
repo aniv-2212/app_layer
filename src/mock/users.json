@@ -1,7 +1,0 @@
-{
-  "items": [
-    {"id":"u1","name":"A. Patel","role":"SOC Lead","team":"Detection"},
-    {"id":"u2","name":"N. Chen","role":"Threat Intel","team":"Intel"},
-    {"id":"u3","name":"S. Rivera","role":"Analyst","team":"Response"}
-  ]
-}

@@ -1,13 +1,14 @@
-import { Activity, Brain, Bot, CircleDashed, Cpu, ShieldCheck, Sparkles, TrendingUp, Waves } from 'lucide-react'
+import { Activity, Brain, CircleDashed, Cpu, ShieldCheck, Sparkles, Waves } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PageShell } from '../components/layout/PageShell'
 import { KPICard } from '../components/cards/KPICard'
 import { StatusCard } from '../components/cards/StatusCard'
 import { AlertCard } from '../components/cards/AlertCard'
 import { ChartCard } from '../components/cards/ChartCard'
+import { MiniThreatMap } from '../components/maps/MiniThreatMap'
 import { Toast } from '../components/ui/Toast'
-import dashboardData from '../mock/dashboard.json'
+import { api } from '../services/api'
 import { useAnalyticsStore } from '../store/analyticsStore'
 import { useDashboardStore } from '../store/dashboardStore'
 
@@ -15,22 +16,40 @@ export function DashboardPage() {
   const [selectedAlert, setSelectedAlert] = useState<string | null>(null)
   const [toast, setToast] = useState(false)
   const timeRange = useAnalyticsStore((state) => state.timeRange)
-  const refreshCharts = useAnalyticsStore((state) => state.refreshCharts)
   const kpis = useDashboardStore((state) => state.kpis)
-  const alerts = dashboardData.alerts
-  const activities = dashboardData.activities
+  const alerts = useDashboardStore((state) => state.alerts)
+  const activities = useDashboardStore((state) => state.activities)
+  const statistics = useDashboardStore((state) => state.statistics)
+  const stream = useDashboardStore((state) => state.stream)
+  const hydrate = useDashboardStore((state) => state.hydrate)
   const [refreshing, setRefreshing] = useState(false)
 
-  const visibleKpis = useMemo(() => kpis.slice(0, 4).map((kpi) => ({ ...kpi, value: timeRange === '24h' ? kpi.value : timeRange === '7d' ? '3.21M' : timeRange === '30d' ? '8.42M' : '14.7M' })), [kpis, timeRange])
+  useEffect(() => {
+    void hydrate()
+  }, [hydrate])
 
-  const handleRefresh = () => {
+  const visibleKpis = useMemo(() => kpis.slice(0, 4), [kpis])
+  const summary = statistics?.summary
+  const detected = summary?.total_attacks ?? 0
+  const blocked = statistics ? Math.round((statistics.mitigated_percentage / 100) * detected) : 0
+  const escalated = summary?.critical ?? 0
+  const topFunnel = useMemo(
+    () => Object.entries(statistics?.top_attack_types ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 3),
+    [statistics],
+  )
+
+  const handleRefresh = async () => {
     setRefreshing(true)
-    refreshCharts()
-    window.setTimeout(() => {
+    try {
+      await api.streamSnapshot()
+      await hydrate()
+    } catch (error) {
+      console.warn('Refresh failed', error)
+    } finally {
       setRefreshing(false)
       setToast(true)
       window.setTimeout(() => setToast(false), 1600)
-    }, 900)
+    }
   }
 
   return (
@@ -45,7 +64,7 @@ export function DashboardPage() {
         }
         filters={
           <>
-            <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-sm text-cyan-300">Critical {timeRange === '24h' ? '12' : '18'}</span>
+            <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-sm text-cyan-300">Critical {summary?.critical ?? 0}</span>
             <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">{timeRange} window</span>
             <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">All regions</span>
           </>
@@ -59,22 +78,21 @@ export function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-[24px] border border-cyan-400/20 bg-cyan-500/10 p-4">
               <p className="text-sm text-cyan-300">Detected</p>
-              <p className="mt-2 text-3xl font-semibold text-white">4.2K</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{detected.toLocaleString()}</p>
             </div>
             <div className="rounded-[24px] border border-fuchsia-400/20 bg-fuchsia-500/10 p-4">
               <p className="text-sm text-fuchsia-300">Blocked</p>
-              <p className="mt-2 text-3xl font-semibold text-white">3.8K</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{blocked.toLocaleString()}</p>
             </div>
             <div className="rounded-[24px] border border-emerald-400/20 bg-emerald-500/10 p-4">
               <p className="text-sm text-emerald-300">Escalated</p>
-              <p className="mt-2 text-3xl font-semibold text-white">126</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{escalated.toLocaleString()}</p>
             </div>
           </div>
         </ChartCard>
-        <ChartCard title="System Health" subtitle="Platform availability and workload balance">
-          <div className="space-y-3">
-            <StatusCard title="Edge Nodes" value="97.2%" detail="Healthy and synced" icon={Cpu} accent="from-cyan-500 to-sky-600" />
-            <StatusCard title="Detection Latency" value="184ms" detail="Within SLA threshold" icon={Activity} accent="from-fuchsia-500 to-violet-600" />
+        <ChartCard title="Global Presence" subtitle="Live threats worldwide">
+          <div className="h-40">
+            <MiniThreatMap />
           </div>
         </ChartCard>
       </div>
@@ -149,9 +167,9 @@ export function DashboardPage() {
         <ChartCard title="Live Status Panel" subtitle="Telemetry pulse from the SOC stack">
           <div className="space-y-3">
             {[
-              ['Detection Engines', 'Operational', '12/12 healthy'],
-              ['Threat Feed', 'Syncing', 'Updated 2m ago'],
-              ['Case Routing', 'Ready', '99.6% SLA'],
+              ['Attack Stream', stream?.running ? 'Streaming' : 'Paused', `${stream?.stored_attacks ?? 0}/${stream?.buffer_size ?? 500} events buffered`],
+              ['Session Volume', 'Live', `${stream?.session_total ?? 0} attacks this session`],
+              ['Socket Clients', stream ? 'Connected' : 'Offline', `${stream?.connected_clients ?? 0} dashboards attached`],
             ].map(([label, status, detail]) => (
               <div key={label} className="flex items-center justify-between rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-sm">
                 <div>
@@ -168,10 +186,10 @@ export function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         <ChartCard title="Attack Funnel" subtitle="Most active pathways this hour">
           <div className="space-y-3">
-            {['Web login abuse', 'API token probing', 'Malware beaconing'].map((item) => (
-              <div key={item} className="flex items-center justify-between rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
-                <span>{item}</span>
-                <span className="text-cyan-300">High</span>
+            {(topFunnel.length ? topFunnel : [['Awaiting stream…', 0] as [string, number]]).map(([name, count]) => (
+              <div key={name} className="flex items-center justify-between rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+                <span>{name}</span>
+                <span className="text-cyan-300">{count || 'High'}</span>
               </div>
             ))}
           </div>

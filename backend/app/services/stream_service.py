@@ -44,6 +44,22 @@ class StreamService:
         self._attack_task: asyncio.Task | None = None
         self._summary_task: asyncio.Task | None = None
 
+    @property
+    def running(self) -> bool:
+        return self._running
+
+    def status(self) -> dict:
+        """Return operational stream status for REST health/control endpoints."""
+        return {
+            "running": self._running,
+            "socket_interval": self._settings.socket_interval,
+            "summary_interval": self._settings.summary_interval,
+            "buffer_size": self._attack_repo.capacity,
+            "stored_attacks": self._attack_repo.stored_count,
+            "session_total": self._statistics.session_total,
+            "connected_clients": self._socket.connected_count,
+        }
+
     async def start(self) -> None:
         """Start background streaming loops."""
         if self._running:
@@ -74,30 +90,48 @@ class StreamService:
     async def _attack_loop(self) -> None:
         while self._running:
             try:
-                attack = await self._generator.generate()
-                await self._attack_repo.add(attack)
-                self._heatmap.record(attack)
-                self._statistics.increment_session_total()
-
-                payload = attack.model_dump(mode="json")
-                await self._socket.emit("attack:new", payload)
+                await self.generate_once()
             except asyncio.CancelledError:
                 raise
             except Exception:
                 logger.exception("Error in attack generation loop")
             await asyncio.sleep(self._settings.socket_interval)
 
+    async def generate_once(self) -> dict:
+        """Generate, persist, and broadcast a single attack event."""
+        attack = await self._generator.generate()
+        await self._attack_repo.add(attack)
+        self._heatmap.record(attack)
+        self._statistics.increment_session_total()
+
+        payload = attack.model_dump(mode="json")
+        await self._socket.emit("attack:new", payload)
+        return payload
+
+    async def emit_snapshot(self) -> dict:
+        """Broadcast all derived dashboard state immediately."""
+        summary = await self._statistics.get_summary()
+        heatmap = self._heatmap.to_broadcast_payload()
+        stats = await self._statistics.get_statistics()
+        timeline = await self._replay.get_timeline_payload()
+
+        await self._socket.emit("attack:summary", summary.model_dump())
+        await self._socket.emit("heatmap:update", heatmap)
+        await self._socket.emit("statistics:update", stats.model_dump())
+        await self._socket.emit("timeline:update", timeline)
+
+        return {
+            "summary": summary.model_dump(),
+            "heatmap": heatmap,
+            "statistics": stats.model_dump(),
+            "timeline": timeline,
+        }
+
     async def _summary_loop(self) -> None:
         while self._running:
             try:
                 await asyncio.sleep(self._settings.summary_interval)
-                summary = await self._statistics.get_summary()
-                await self._socket.emit("attack:summary", summary.model_dump())
-                await self._socket.emit("heatmap:update", self._heatmap.to_broadcast_payload())
-                stats = await self._statistics.get_statistics()
-                await self._socket.emit("statistics:update", stats.model_dump())
-                timeline = await self._replay.get_timeline_payload()
-                await self._socket.emit("timeline:update", timeline)
+                await self.emit_snapshot()
             except asyncio.CancelledError:
                 raise
             except Exception:

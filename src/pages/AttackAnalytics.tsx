@@ -3,18 +3,42 @@ import { useMemo, useState } from 'react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
+import { AttackTable } from '../components/tables/AttackTable'
+import { BarChart } from '../components/charts/BarChart'
+import { LineChart } from '../components/charts/LineChart'
+import { PieChart } from '../components/charts/PieChart'
 import { Toast } from '../components/ui/Toast'
 import { useAnalyticsStore } from '../store/analyticsStore'
+import { useAttackStore } from '../store/attackStore'
 
 export function AttackAnalyticsPage() {
   const [toastOpen, setToastOpen] = useState(false)
   const timeRange = useAnalyticsStore((state) => state.timeRange)
   const country = useAnalyticsStore((state) => state.country)
-  const analyticsItems = useMemo(() => [
-    { label: 'US — 14.8K', value: 'US' },
-    { label: 'DE — 9.2K', value: 'DE' },
-    { label: 'SG — 6.1K', value: 'SG' },
-  ], [])
+  const attacks = useAttackStore((state) => state.attacks)
+  const attackLogs = useAttackStore((state) => state.attackLogs)
+  const statistics = useAttackStore((state) => state.statistics)
+  const timeline = useAttackStore((state) => state.timeline)
+
+  const topCountries = useMemo(() => Object.entries(statistics?.top_source_countries ?? attacks.reduce<Record<string, number>>((acc, attack) => {
+    const key = attack.source_country ?? 'Unknown'
+    acc[key] = (acc[key] ?? 0) + 1
+    return acc
+  }, {})).sort((a, b) => b[1] - a[1]).slice(0, 6), [attacks, statistics])
+
+  const attackTypes = useMemo(() => Object.entries(statistics?.top_attack_types ?? attacks.reduce<Record<string, number>>((acc, attack) => {
+    const key = attack.attack_type ?? 'Unknown'
+    acc[key] = (acc[key] ?? 0) + 1
+    return acc
+  }, {})).sort((a, b) => b[1] - a[1]).slice(0, 6), [attacks, statistics])
+
+  const timelineValues = useMemo(() => {
+    const buckets = timeline.length ? timeline.slice(-16) : attacks.slice(0, 16).reverse().map((attack) => ({ label: new Date(attack.timestamp).toLocaleTimeString(), count: attack.request_count ?? attack.risk_score ?? 1 }))
+    return {
+      labels: buckets.map((bucket: any) => bucket.label ?? bucket.time ?? bucket.timestamp ?? ''),
+      values: buckets.map((bucket: any) => bucket.count ?? bucket.attacks ?? 0),
+    }
+  }, [attacks, timeline])
 
   return (
     <PageShell
@@ -41,40 +65,41 @@ export function AttackAnalyticsPage() {
     >
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <ChartCard title="Attack Growth" subtitle="Volume trend over the selected period">
-          <div className="h-48 rounded-[24px] border border-white/10 bg-[linear-gradient(135deg,rgba(34,211,238,0.15)_0%,rgba(15,23,42,0.92)_100%)] p-4" />
+          <LineChart data={timelineValues} height={240} />
         </ChartCard>
         <ChartCard title="Attack Timeline" subtitle="Concentrated bursts across the day">
-          <div className="space-y-3 text-sm text-slate-300">
-            {['04:12 UTC — 1.3K requests', '08:41 UTC — 2.8K requests', '15:26 UTC — 4.1K requests'].map((item) => (
-              <div key={item} className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3">{item}</div>
-            ))}
-          </div>
+          <BarChart data={timelineValues} height={240} />
         </ChartCard>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         <ChartCard title="Country Analytics" subtitle="High-risk geographies">
           <div className="space-y-2 text-sm text-slate-300">
-            {analyticsItems.map((item) => (
-              <button key={item.value} onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">
-                {item.label}
+            {topCountries.map(([name, value]) => (
+              <button key={name} onClick={() => setToastOpen(true)} className="flex w-full justify-between rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">
+                <span>{name}</span><span className="text-cyan-300">{value.toLocaleString()}</span>
               </button>
             ))}
           </div>
         </ChartCard>
         <ChartCard title="Attack Success Rate" subtitle="Observed breach attempts">
-          <div className="rounded-[24px] border border-cyan-400/20 bg-cyan-500/10 p-4 text-sm text-cyan-200">Success rate: 2.1%</div>
+          <PieChart data={[{ name: 'Blocked', value: attackLogs.filter((row) => row.status === 'Blocked' || row.status === 'Mitigated').length }, { name: 'Observed', value: attackLogs.filter((row) => row.status !== 'Blocked' && row.status !== 'Mitigated').length }]} height={220} />
         </ChartCard>
         <ChartCard title="Top Endpoints" subtitle="Most targeted resources">
           <div className="space-y-2 text-sm text-slate-300">
-            <div className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3">/login</div>
-            <div className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3">/api/token</div>
+            {Array.from(new Set(attackLogs.map((row) => row.endpoint))).slice(0, 4).map((endpoint) => (
+              <div key={endpoint} className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3">{endpoint}</div>
+            ))}
           </div>
         </ChartCard>
         <ChartCard title="Attack Categories" subtitle="Signals grouped by behavior">
-          <div className="rounded-[24px] border border-fuchsia-400/20 bg-fuchsia-500/10 p-4 text-sm text-fuchsia-200">SQLi, XSS, RCE, credential abuse</div>
+          <PieChart data={attackTypes.map(([name, value]) => ({ name, value }))} height={220} />
         </ChartCard>
       </div>
+
+      <ChartCard title="Recent Attack Rows" subtitle="Timestamp, source, destination, severity, and status">
+        <AttackTable data={attacks.length ? attacks.slice(0, 12) : attackLogs.slice(0, 12)} />
+      </ChartCard>
 
       <ChartCard title="Export Analytics" subtitle="Download summaries for reporting and investigations">
         <div className="flex flex-wrap gap-3">

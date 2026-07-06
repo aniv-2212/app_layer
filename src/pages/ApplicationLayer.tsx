@@ -9,7 +9,7 @@ import { AttackTrendChart } from '../components/charts/AttackTrendChart'
 import { AttackTypeChart } from '../components/charts/AttackTypeChart'
 import { HTTPMethodChart } from '../components/charts/HTTPMethodChart'
 import { StatusCodeChart } from '../components/charts/StatusCodeChart'
-import { TopCountriesChart } from '../components/charts/TopCountriesChart'
+import { ApplicationLayerMap } from '../components/maps/ApplicationLayerMap'
 import { LiveEvents } from '../components/live-events/LiveEvents'
 import { AttackLogTable } from '../components/tables/AttackLogTable'
 import { AIInsights } from '../components/insights/AIInsights'
@@ -44,7 +44,7 @@ export function ApplicationLayerPage() {
             <AttackTypeChart />
             <HTTPMethodChart />
             <StatusCodeChart />
-            <TopCountriesChart />
+            <ApplicationLayerMap />
           </div>
           <div className="mb-6 grid gap-6 xl:grid-cols-[1.5fr_0.85fr]">
             <AttackLogTable />

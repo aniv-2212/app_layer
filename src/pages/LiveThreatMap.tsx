@@ -1,128 +1,409 @@
-import { Activity, AlertTriangle, Filter, MapPinned, ShieldAlert, TimerReset, TrendingUp } from 'lucide-react'
+import 'maplibre-gl/dist/maplibre-gl.css'
+
+import DeckGL from '@deck.gl/react'
+import { HeatmapLayer } from '@deck.gl/aggregation-layers'
+import { ArcLayer, ScatterplotLayer } from '@deck.gl/layers'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useMemo, useState } from 'react'
+import { Activity, AlertTriangle, Download, Filter, Flame, Globe2, Pause, Play, RotateCcw, Search, ShieldCheck, Square, Wifi, WifiOff, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import Map from 'react-map-gl/maplibre'
+import toast from 'react-hot-toast'
 import { PageShell } from '../components/layout/PageShell'
 import { ChartCard } from '../components/cards/ChartCard'
 import { StatusCard } from '../components/cards/StatusCard'
-import attacksData from '../mock/attacks.json'
-import { useAnalyticsStore } from '../store/analyticsStore'
-import { useThreatStore } from '../store/threatStore'
-import { useMapStore } from '../store/mapStore'
+import { buildCountryRollup, selectFilteredAttacks, useLiveThreatStore } from '../store/liveThreatStore'
+import { useSocket } from '../hooks/useSocket'
+import type { LiveAttack, TimelineBucket } from '../types/liveThreatMap'
+
+const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
+
+const COUNTRY_COORDS: Record<string, [number, number]> = {
+  Brazil: [-51.9, -14.2],
+  Canada: [-106.3, 56.1],
+  China: [104.2, 35.9],
+  France: [2.2, 46.2],
+  Germany: [10.4, 51.2],
+  India: [78.9, 20.6],
+  Japan: [138.2, 36.2],
+  Russia: [105.3, 61.5],
+  Singapore: [103.8, 1.35],
+  'South Korea': [127.8, 35.9],
+  'United Kingdom': [-3.4, 55.4],
+  'United States': [-95.7, 37.1],
+}
+
+const ATTACK_TYPES = ['SQL Injection', 'XSS', 'Command Injection', 'Credential Stuffing', 'Bot Attack', 'Brute Force', 'RCE', 'DDoS', 'API Abuse']
+const SEVERITIES = ['Low', 'Medium', 'High', 'Critical']
+const STATUSES = ['Blocked', 'Mitigated', 'Detected', 'Investigating', 'Allowed']
+const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+const PROTOCOLS = ['HTTPS', 'HTTP', 'TCP', 'UDP']
+
+function randomItem<T>(items: T[]) {
+  return items[Math.floor(Math.random() * items.length)]
+}
+
+function jitter([longitude, latitude]: [number, number]) {
+  return [longitude + (Math.random() - 0.5) * 7, latitude + (Math.random() - 0.5) * 5] as [number, number]
+}
+
+function buildSyntheticAttack(id: number): LiveAttack {
+  const countries = Object.keys(COUNTRY_COORDS)
+  const source = randomItem(countries)
+  let destination = randomItem(countries)
+  if (destination === source) destination = 'India'
+  const [source_longitude, source_latitude] = jitter(COUNTRY_COORDS[source])
+  const [destination_longitude, destination_latitude] = jitter(COUNTRY_COORDS[destination])
+  const severity = randomItem(SEVERITIES)
+
+  return {
+    id,
+    timestamp: new Date().toISOString(),
+    source_country: source,
+    destination_country: destination,
+    source_latitude,
+    source_longitude,
+    destination_latitude,
+    destination_longitude,
+    source_ip: `185.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+    destination_ip: `10.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+    attack_type: randomItem(ATTACK_TYPES),
+    severity,
+    status: severity === 'Critical' ? randomItem(['Blocked', 'Mitigated', 'Investigating']) : randomItem(STATUSES),
+    endpoint: randomItem(['/login', '/api/auth', '/checkout', '/admin', '/graphql', '/upload']),
+    http_method: randomItem(METHODS),
+    request_count: 120 + Math.floor(Math.random() * 5800),
+    duration_ms: 20 + Math.floor(Math.random() * 1300),
+    confidence: 0.72 + Math.random() * 0.26,
+    risk_score: severity === 'Critical' ? 88 + Math.floor(Math.random() * 12) : 35 + Math.floor(Math.random() * 50),
+    protocol: randomItem(PROTOCOLS),
+    user_agent: 'Synthetic Threat Sensor',
+    asn: `AS${10000 + Math.floor(Math.random() * 70000)}`,
+    city: 'Telemetry edge',
+    isp: 'CyberAI Sensor Grid',
+    country_code: destination.slice(0, 2).toUpperCase(),
+    latitude: source_latitude,
+    longitude: source_longitude,
+  }
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('en', { notation: value > 9999 ? 'compact' : 'standard' }).format(value)
+}
+
+function severityColor(severity: string): [number, number, number] {
+  if (severity === 'Critical') return [239, 68, 68]
+  if (severity === 'High') return [249, 115, 22]
+  if (severity === 'Medium') return [234, 179, 8]
+  return [34, 197, 94]
+}
+
+function downloadFile(filename: string, body: string, type: string) {
+  const blob = new Blob([body], { type })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+function toCsv(attacks: LiveAttack[]) {
+  const columns = ['timestamp', 'source_country', 'destination_country', 'source_ip', 'attack_type', 'severity', 'status', 'endpoint', 'http_method', 'protocol', 'request_count', 'risk_score']
+  return [columns.join(','), ...attacks.map((attack) => columns.map((column) => `"${String(attack[column as keyof LiveAttack] ?? '').replaceAll('"', '""')}"`).join(','))].join('\n')
+}
 
 export function LiveThreatMapPage() {
-  const [playing, setPlaying] = useState(true)
-  const [activeAttack, setActiveAttack] = useState(attacksData.items[0])
-  const timeRange = useAnalyticsStore((state) => state.timeRange)
-  const country = useAnalyticsStore((state) => state.country)
-  const setSelectedCountry = useMapStore((state) => state.setSelectedCountry)
-  const setDrawerOpen = useMapStore((state) => state.setDrawerOpen)
-  const setHoveredAttack = useMapStore((state) => state.setHoveredAttack)
-  const threatItems = useThreatStore((state) => state.threatItems)
+  useSocket()
 
-  const visibleAttacks = useMemo(() => {
-    return threatItems.filter((item) => (country === 'All' ? true : item.country === 'United States' ? country === 'US' : item.country === 'Germany' ? country === 'DE' : item.country === 'Singapore' ? country === 'SG' : item.country === 'Brazil' ? country === 'BR' : item.country === 'United Kingdom' ? country === 'GB' : true))
-  }, [country, threatItems])
+  const attacks = useLiveThreatStore((state) => state.attacks)
+  const statistics = useLiveThreatStore((state) => state.statistics)
+  const heatmap = useLiveThreatStore((state) => state.heatmap)
+  const timeline = useLiveThreatStore((state) => state.timeline)
+  const selectedCountry = useLiveThreatStore((state) => state.selectedCountry)
+  const filters = useLiveThreatStore((state) => state.filters)
+  const connected = useLiveThreatStore((state) => state.connected)
+  const connectionStatus = useLiveThreatStore((state) => state.connectionStatus)
+  const replaying = useLiveThreatStore((state) => state.replaying)
+  const addAttack = useLiveThreatStore((state) => state.addAttack)
+  const selectCountry = useLiveThreatStore((state) => state.selectCountry)
+  const setFilters = useLiveThreatStore((state) => state.setFilters)
+  const setReplaying = useLiveThreatStore((state) => state.setReplaying)
+  const clear = useLiveThreatStore((state) => state.clear)
+  const [hoveredAttack, setHoveredAttack] = useState<LiveAttack | null>(null)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
+  useEffect(() => {
+    if (connected || attacks.length > 0) return
+    const interval = window.setInterval(() => addAttack(buildSyntheticAttack(Date.now())), 1400)
+    return () => window.clearInterval(interval)
+  }, [addAttack, attacks.length, connected])
+
+  useEffect(() => {
+    if (!replaying) return
+    const interval = window.setInterval(() => addAttack(buildSyntheticAttack(Date.now())), 650)
+    return () => window.clearInterval(interval)
+  }, [addAttack, replaying])
+
+  const filteredAttacks = useMemo(() => selectFilteredAttacks(attacks, filters), [attacks, filters])
+  const latestAttacks = filteredAttacks.slice(0, 80)
+  const countryOptions = useMemo(() => ['All', ...Array.from(new Set(attacks.flatMap((attack) => [attack.source_country, attack.destination_country]))).sort()], [attacks])
+  const attackTypeOptions = useMemo(() => ['All', ...Array.from(new Set(attacks.map((attack) => attack.attack_type))).sort()], [attacks])
+  const selectedRollup = useMemo(() => (selectedCountry ? buildCountryRollup(attacks, selectedCountry) : null), [attacks, selectedCountry])
+  const timelineBars = useMemo<TimelineBucket[]>(() => {
+    if (timeline.length) return timeline
+    return filteredAttacks.slice(0, 32).reverse().map((attack) => ({ label: attack.timestamp, count: attack.risk_score }))
+  }, [filteredAttacks, timeline])
+
+  const cards = useMemo(() => {
+    const totalRequests = statistics?.total_requests ?? filteredAttacks.reduce((sum, attack) => sum + attack.request_count, 0)
+    const totalAttacks = statistics?.summary.total_attacks ?? filteredAttacks.length
+    const critical = statistics?.summary.critical ?? filteredAttacks.filter((attack) => attack.severity === 'Critical').length
+    const blocked = filteredAttacks.filter((attack) => attack.status === 'Blocked' || attack.status === 'Mitigated').length
+    const threatScore = Math.round(statistics?.average_risk_score ?? filteredAttacks.reduce((sum, attack) => sum + attack.risk_score, 0) / Math.max(filteredAttacks.length, 1))
+    return { totalRequests, totalAttacks, critical, blocked, threatScore }
+  }, [filteredAttacks, statistics])
+
+  const layers = useMemo(() => {
+    const arcLayer = new ArcLayer<LiveAttack>({
+      id: 'live-attack-arcs',
+      data: latestAttacks,
+      getSourcePosition: (attack) => [attack.source_longitude, attack.source_latitude],
+      getTargetPosition: (attack) => [attack.destination_longitude, attack.destination_latitude],
+      getSourceColor: (attack) => [...severityColor(String(attack.severity)), 170],
+      getTargetColor: [45, 212, 191, 220],
+      getWidth: (attack) => Math.max(1.2, Math.min(6, attack.risk_score / 18)),
+      pickable: true,
+      autoHighlight: true,
+      onHover: ({ object }) => setHoveredAttack(object ?? null),
+      onClick: ({ object }) => object && selectCountry(object.destination_country),
+    })
+    const markerLayer = new ScatterplotLayer<LiveAttack>({
+      id: 'destination-pulses',
+      data: latestAttacks,
+      getPosition: (attack) => [attack.destination_longitude, attack.destination_latitude],
+      getRadius: (attack) => 28000 + attack.risk_score * 900,
+      getFillColor: (attack) => [...severityColor(String(attack.severity)), 145],
+      getLineColor: [255, 255, 255, 230],
+      lineWidthMinPixels: 1,
+      stroked: true,
+      pickable: true,
+      onHover: ({ object }) => setHoveredAttack(object ?? null),
+      onClick: ({ object }) => object && selectCountry(object.destination_country),
+    })
+    const heatLayer = new HeatmapLayer<LiveAttack>({
+      id: 'attack-heatmap',
+      data: latestAttacks,
+      getPosition: (attack) => [attack.destination_longitude, attack.destination_latitude],
+      getWeight: (attack) => attack.risk_score,
+      radiusPixels: 44,
+      intensity: 1.5,
+      threshold: 0.02,
+    })
+    return [heatLayer, arcLayer, markerLayer]
+  }, [latestAttacks, selectCountry])
+
+  const exportData = (format: 'csv' | 'json' | 'pdf') => {
+    if (format === 'csv') downloadFile('cyberai-live-threats.csv', toCsv(filteredAttacks), 'text/csv')
+    if (format === 'json') downloadFile('cyberai-live-threats.json', JSON.stringify(filteredAttacks, null, 2), 'application/json')
+    if (format === 'pdf') {
+      toast.success('Opening print dialog for PDF export')
+      window.print()
+    }
+  }
 
   return (
     <PageShell
       title="Live Threat Map"
-      subtitle="Global telemetry and live attack patterns rendered as a premium, interactive map surface."
+      subtitle="Real-time attack streaming with MapLibre, Deck.gl layers, filters, replay, heat intensity, and export-ready telemetry."
+      searchPlaceholder="Country, IP, endpoint"
       actions={
-        <button onClick={() => setPlaying((value) => !value)} className="rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white">
-          {playing ? 'Pause Replay' : 'Play Replay'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setFiltersOpen((value) => !value)} className="rounded-full border border-white/10 bg-slate-900/80 p-2 text-slate-300" title="Filters">
+            <Filter className="h-4 w-4" />
+          </button>
+          <button onClick={() => setReplaying(!replaying)} className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">
+            {replaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {replaying ? 'Pause' : 'Replay'}
+          </button>
+          <button onClick={() => exportData('csv')} className="rounded-full border border-white/10 bg-slate-900/80 p-2 text-slate-300" title="Export CSV">
+            <Download className="h-4 w-4" />
+          </button>
+        </div>
       }
       filters={
         <>
-          <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-sm text-cyan-300">{playing ? 'Realtime' : 'Paused'}</span>
-          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">{timeRange} window</span>
-          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">{country === 'All' ? 'All vectors' : country}</span>
+          <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm ${connected ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-300' : 'border-amber-400/20 bg-amber-500/10 text-amber-300'}`}>
+            {connected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+            {connectionStatus}
+          </span>
+          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">{filteredAttacks.length} visible events</span>
+          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-300">Heat total {formatNumber(heatmap.total || filteredAttacks.length)}</span>
         </>
       }
       kpiSection={[
-        <StatusCard key="vol" title="Attack Volume" value={visibleAttacks.length.toString()} detail="Live events per minute" icon={Activity} accent="from-cyan-500 to-sky-600" />,
-        <StatusCard key="regions" title="Affected Regions" value="34" detail="Active countries" icon={MapPinned} accent="from-fuchsia-500 to-violet-600" />,
-        <StatusCard key="latency" title="Threat Feed Latency" value="82ms" detail="Low-latency ingestion" icon={TimerReset} accent="from-amber-400 to-orange-600" />,
-        <StatusCard key="risk" title="Risk Surface" value="94/100" detail="Elevated exposure" icon={ShieldAlert} accent="from-emerald-500 to-teal-600" />,
+        <StatusCard key="requests" title="Requests" value={formatNumber(cards.totalRequests)} detail="Current filter scope" icon={Activity} accent="from-cyan-500 to-sky-600" />,
+        <StatusCard key="attacks" title="Attacks" value={formatNumber(cards.totalAttacks)} detail={`${statistics?.attacks_per_minute?.toFixed?.(1) ?? filteredAttacks.length}/min stream`} icon={Globe2} accent="from-fuchsia-500 to-violet-600" />,
+        <StatusCard key="critical" title="Critical" value={formatNumber(cards.critical)} detail="Priority investigations" icon={AlertTriangle} accent="from-rose-500 to-red-600" />,
+        <StatusCard key="blocked" title="Blocked" value={formatNumber(cards.blocked)} detail={`Threat score ${cards.threatScore}/100`} icon={ShieldCheck} accent="from-emerald-500 to-teal-600" />,
       ]}
     >
-      <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <ChartCard title="Global Attack Surface" subtitle="Interactive map view with layered threat intelligence">
-          <div className="relative min-h-[480px] overflow-hidden rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.16),_transparent_35%),linear-gradient(135deg,_rgba(15,23,42,0.95)_0%,_rgba(2,6,23,0.95)_100%)] p-4">
-            <div className="absolute left-4 top-4 rounded-full border border-cyan-400/20 bg-slate-900/70 px-3 py-2 text-xs text-cyan-200">
-              <div className="flex items-center gap-2"><Filter className="h-3.5 w-3.5" /> Floating filter panel</div>
+      <AnimatePresence>
+        {filtersOpen ? (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden rounded-[20px] border border-white/10 bg-slate-950/80 p-4">
+            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
+              <FilterSelect label="Country" value={filters.country} options={countryOptions} onChange={(country) => setFilters({ country })} />
+              <FilterSelect label="Severity" value={filters.severity} options={['All', ...SEVERITIES]} onChange={(severity) => setFilters({ severity })} />
+              <FilterSelect label="Attack" value={filters.attackType} options={attackTypeOptions.length > 1 ? attackTypeOptions : ['All', ...ATTACK_TYPES]} onChange={(attackType) => setFilters({ attackType })} />
+              <FilterSelect label="Status" value={filters.status} options={['All', ...STATUSES]} onChange={(status) => setFilters({ status })} />
+              <FilterSelect label="Protocol" value={filters.protocol} options={['All', ...PROTOCOLS]} onChange={(protocol) => setFilters({ protocol })} />
+              <FilterSelect label="Method" value={filters.httpMethod} options={['All', ...METHODS]} onChange={(httpMethod) => setFilters({ httpMethod })} />
+              <label className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                Search
+                <span className="mt-2 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm normal-case tracking-normal text-slate-300">
+                  <Search className="h-4 w-4" />
+                  <input value={filters.search} onChange={(event) => setFilters({ search: event.target.value })} className="min-w-0 flex-1 bg-transparent outline-none" placeholder="IP, path, attack" />
+                </span>
+              </label>
             </div>
-            <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-3">
-              {visibleAttacks.slice(0, 3).map((item) => (
-                <button key={item.id} onClick={() => {
-                  setActiveAttack(item)
-                  setSelectedCountry(item.country)
-                  setDrawerOpen(true)
-                  setHoveredAttack(item.id)
-                }} className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-300">
-                  {item.title}
-                </button>
-              ))}
-            </div>
-            <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:40px_40px]" />
-            <AnimatePresence mode="wait">
-              <motion.div key={activeAttack.id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="absolute left-[25%] top-[20%] h-24 w-24 rounded-full border border-cyan-400/30 bg-cyan-500/10" />
-            </AnimatePresence>
-            <div className="absolute right-[18%] top-[34%] h-16 w-16 rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10" />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.55fr)]">
+        <ChartCard
+          title="Global Attack Surface"
+          subtitle="Dark world map with live arcs, destination pulses, and risk heat"
+          action={
+            <button onClick={clear} className="rounded-full border border-white/10 bg-slate-900/80 p-2 text-slate-300" title="Clear events">
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          }
+        >
+          <div className="relative h-[560px] overflow-hidden rounded-[18px] border border-white/10 bg-slate-950">
+            <DeckGL
+              initialViewState={{ longitude: 35, latitude: 23, zoom: 1.45, pitch: 28, bearing: 0 }}
+              controller
+              layers={layers}
+              getCursor={({ isDragging, isHovering }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab')}
+            >
+              <Map mapStyle={MAP_STYLE} reuseMaps attributionControl={false} />
+            </DeckGL>
+              <div className="pointer-events-none absolute left-4 top-4 rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-300 backdrop-blur">
+                <div className="flex items-center gap-2 text-cyan-200"><Flame className="h-4 w-4" /> Heatmap intensity</div>
+                <div className="mt-3 h-2 w-40 rounded-full bg-gradient-to-r from-emerald-400 via-yellow-300 via-orange-400 to-red-500" />
+              </div>
+            {hoveredAttack ? <AttackTooltip attack={hoveredAttack} /> : null}
           </div>
         </ChartCard>
 
         <div className="space-y-6">
-          <ChartCard title="Timeline" subtitle="Event burst sequence">
-            <div className="space-y-3">
-              {visibleAttacks.slice(0, 3).map((item) => (
-                <button key={item.id} onClick={() => setActiveAttack(item)} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left text-sm text-slate-300">
-                  {item.time} — {item.title}
+          <ChartCard title="Live Feed" subtitle="Newest detections first">
+            <div className="max-h-[342px] space-y-3 overflow-auto pr-1">
+              {filteredAttacks.slice(0, 18).map((attack) => (
+                <button key={attack.id} onClick={() => selectCountry(attack.destination_country)} className="w-full rounded-[18px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left transition hover:border-cyan-400/30 hover:bg-slate-900">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-slate-500">{new Date(attack.timestamp).toLocaleTimeString()}</span>
+                    <span className={`rounded-full px-2 py-1 text-xs ${attack.severity === 'Critical' ? 'bg-red-500/15 text-red-300' : attack.severity === 'High' ? 'bg-orange-500/15 text-orange-300' : 'bg-cyan-500/15 text-cyan-300'}`}>{attack.severity}</span>
+                  </div>
+                  <div className="mt-2 text-sm font-medium text-white">{attack.source_country} {'->'} {attack.destination_country}</div>
+                  <div className="mt-1 flex items-center justify-between gap-3 text-xs text-slate-400">
+                    <span>{attack.attack_type}</span>
+                    <span>{attack.status}</span>
+                  </div>
                 </button>
               ))}
             </div>
           </ChartCard>
-          <ChartCard title="Live Attack Feed" subtitle="Most recent detections">
-            <div className="space-y-3">
-              {visibleAttacks.slice(0, 3).map((item) => (
-                <button key={item.id} onClick={() => setActiveAttack(item)} className="flex w-full items-center justify-between rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left text-sm text-slate-300">
-                  <span>{item.title}</span>
-                  <AlertTriangle className="h-4 w-4 text-amber-300" />
-                </button>
-              ))}
+
+          <ChartCard title="Timeline" subtitle="Recent event density">
+            <div className="flex h-24 items-end gap-1">
+              {timelineBars.slice(-32).map((bucket, index) => {
+                const count = bucket.attacks ?? bucket.count ?? 1
+                return <div key={`${bucket.label ?? bucket.timestamp ?? bucket.time ?? index}-${index}`} className="flex-1 rounded-t bg-cyan-400/70" style={{ height: `${Math.max(12, Math.min(96, count))}%` }} title={bucket.label ?? bucket.timestamp ?? bucket.time} />
+              })}
+            </div>
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <button onClick={() => setReplaying(true)} className="rounded-full border border-cyan-400/20 bg-cyan-500/10 p-2 text-cyan-200" title="Play replay"><Play className="h-4 w-4" /></button>
+              <input value={Math.min(filteredAttacks.length, 500)} readOnly type="range" min="0" max="500" className="w-full accent-cyan-400" />
+              <button onClick={() => setReplaying(false)} className="rounded-full border border-white/10 bg-slate-900/80 p-2 text-slate-300" title="Stop replay"><Square className="h-4 w-4" /></button>
+            </div>
+          </ChartCard>
+
+          <ChartCard title="Export" subtitle="Current filters applied">
+            <div className="grid grid-cols-3 gap-2">
+              <button onClick={() => exportData('csv')} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-300">CSV</button>
+              <button onClick={() => exportData('json')} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-300">JSON</button>
+              <button onClick={() => exportData('pdf')} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-300">PDF</button>
             </div>
           </ChartCard>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-        <ChartCard title="Attack Statistics" subtitle="Sanitized signal composition">
-          <div className="space-y-3 text-sm text-slate-300">
-            <div className="flex justify-between"><span>Volume</span><span className="text-white">3.6K/min</span></div>
-            <div className="flex justify-between"><span>Mitigated</span><span className="text-white">92%</span></div>
-            <div className="flex justify-between"><span>New countries</span><span className="text-white">7</span></div>
-          </div>
-        </ChartCard>
-        <ChartCard title="Heatmap Legend" subtitle="Threat intensity scale">
-          <div className="flex items-center gap-3 text-sm text-slate-300">
-            <div className="h-3 w-10 rounded-full bg-gradient-to-r from-cyan-400 to-fuchsia-500" />
-            <span>Low → High intensity</span>
-          </div>
-        </ChartCard>
-        <ChartCard title="Replay Controls" subtitle="Investigate event progression">
-          <div className="flex items-center gap-2">
-            <button className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-300">◀</button>
-            <button className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-300">▶</button>
-            <button className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-300">⏹</button>
-          </div>
-        </ChartCard>
-        <ChartCard title="Threat Trend" subtitle="Escalations this hour">
-          <div className="flex items-center gap-2 text-sm text-slate-300">
-            <TrendingUp className="h-4 w-4 text-cyan-300" />
-            <span>+18.4% over the prior 15 min</span>
-          </div>
-        </ChartCard>
-      </div>
+      <AnimatePresence>
+        {selectedRollup ? (
+          <motion.aside initial={{ x: 420, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 420, opacity: 0 }} className="fixed bottom-4 right-4 top-4 z-40 w-[min(420px,calc(100vw-32px))] overflow-auto rounded-[24px] border border-white/10 bg-slate-950/95 p-5 shadow-2xl shadow-cyan-950/30 backdrop-blur-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-cyan-300">Country</p>
+                <h2 className="mt-1 text-2xl font-semibold text-white">{selectedRollup.country}</h2>
+              </div>
+              <button onClick={() => selectCountry(null)} className="rounded-full border border-white/10 bg-slate-900/80 p-2 text-slate-300"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <MiniMetric label="Requests" value={formatNumber(selectedRollup.requests)} />
+              <MiniMetric label="Blocked" value={formatNumber(selectedRollup.blocked)} />
+              <MiniMetric label="Threat Score" value={`${selectedRollup.threatScore}/100`} />
+              <MiniMetric label="Attacks" value={formatNumber(selectedRollup.attacks)} />
+            </div>
+            <div className="mt-6 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+              <p className="text-sm text-slate-400">Top Attack</p>
+              <p className="mt-1 text-lg font-semibold text-white">{selectedRollup.topAttack}</p>
+            </div>
+            <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+              <p className="text-sm text-slate-400">Top Sources</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(selectedRollup.topSources.length ? selectedRollup.topSources : ['No external sources']).map((source) => <span key={source} className="rounded-full bg-cyan-500/10 px-3 py-1 text-sm text-cyan-200">{source}</span>)}
+              </div>
+            </div>
+          </motion.aside>
+        ) : null}
+      </AnimatePresence>
     </PageShell>
+  )
+}
+
+function FilterSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
+  return (
+    <label className="text-xs uppercase tracking-[0.22em] text-slate-500">
+      {label}
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm normal-case tracking-normal text-slate-200 outline-none">
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </label>
+  )
+}
+
+function AttackTooltip({ attack }: { attack: LiveAttack }) {
+  return (
+    <div className="pointer-events-none absolute right-4 top-4 w-72 rounded-2xl border border-cyan-400/20 bg-slate-950/90 p-4 text-sm shadow-xl shadow-cyan-950/30 backdrop-blur">
+      <div className="font-semibold text-white">{attack.attack_type}</div>
+      <div className="mt-3 space-y-2 text-slate-300">
+        <div className="flex justify-between"><span>Source</span><span>{attack.source_country}</span></div>
+        <div className="flex justify-between"><span>Target</span><span>{attack.destination_country}</span></div>
+        <div className="flex justify-between"><span>Endpoint</span><span>{attack.endpoint}</span></div>
+        <div className="flex justify-between"><span>Method</span><span>{attack.http_method}</span></div>
+        <div className="flex justify-between"><span>Severity</span><span>{attack.severity}</span></div>
+        <div className="flex justify-between"><span>Status</span><span>{attack.status}</span></div>
+      </div>
+    </div>
+  )
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+      <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-semibold text-white">{value}</p>
+    </div>
   )
 }

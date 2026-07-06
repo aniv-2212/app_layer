@@ -1,20 +1,71 @@
 import { Activity, Network, Radio, ShieldAlert } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
 import { Toast } from '../components/ui/Toast'
+import { api } from '../services/api'
 import { useAnalyticsStore } from '../store/analyticsStore'
+import { useAttackStore } from '../store/attackStore'
+
+function prettyCount(value: number) {
+  return value > 999 ? `${(value / 1000).toFixed(1)}K` : String(value)
+}
 
 export function NetworkMonitoringPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [toastOpen, setToastOpen] = useState(false)
   const timeRange = useAnalyticsStore((state) => state.timeRange)
+  const attacks = useAttackStore((state) => state.attacks)
+  const statistics = useAttackStore((state) => state.statistics)
+  const hydrate = useAttackStore((state) => state.hydrateFromBackend)
 
-  const handleRefresh = () => {
+  // Derived live metrics: statistics update via the statistics:update socket
+  // event, attacks via attack:new — no polling needed.
+  const metrics = useMemo(() => {
+    const recent = attacks.slice(0, 50)
+    const medianDuration = recent.length
+      ? [...recent].map((attack) => attack.duration_ms).sort((a, b) => a - b)[Math.floor(recent.length / 2)]
+      : 0
+    return {
+      live_topology_devices: statistics?.active_countries ?? 0,
+      active_connections_pretty: prettyCount(statistics?.total_requests ?? 0),
+      latency_ms: medianDuration / 1000,
+      network_health_percent: statistics?.mitigated_percentage ?? 0,
+    }
+  }, [attacks, statistics])
+
+  const protocolMix = useMemo(() => {
+    const counts = new Map<string, number>()
+    attacks.forEach((attack) => counts.set(attack.protocol, (counts.get(attack.protocol) ?? 0) + 1))
+    const total = attacks.length || 1
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([protocol, count]) => `${protocol} ${Math.round((count / total) * 100)}%`)
+      .join(', ')
+  }, [attacks])
+
+  const connectionRows = useMemo(() => {
+    const byMethod = new Map<string, number>()
+    attacks.forEach((attack) => byMethod.set(attack.http_method, (byMethod.get(attack.http_method) ?? 0) + attack.request_count))
+    return Array.from(byMethod.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([method, count]) => `${prettyCount(count)} ${method} requests`)
+  }, [attacks])
+
+  const topSources = useMemo(() => attacks.slice(0, 2).map((attack) => attack.source_ip), [attacks])
+
+  const handleRefresh = async () => {
     setRefreshing(true)
     setToastOpen(true)
-    window.setTimeout(() => setRefreshing(false), 1000)
+    try {
+      await api.streamSnapshot()
+      await hydrate()
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   return (
@@ -33,10 +84,10 @@ export function NetworkMonitoringPage() {
         </>
       }
       kpiSection={[
-        <StatusCard key="topology" title="Live Topology" value="214" detail="Connected devices" icon={Network} accent="from-cyan-500 to-sky-600" />,
-        <StatusCard key="active" title="Active Connections" value="91.2K" detail="Current session count" icon={Activity} accent="from-fuchsia-500 to-violet-600" />,
-        <StatusCard key="latency" title="Latency Monitor" value="19ms" detail="Median network latency" icon={Radio} accent="from-amber-400 to-orange-600" />,
-        <StatusCard key="health" title="Network Health" value="99.1%" detail="Stable and resilient" icon={ShieldAlert} accent="from-emerald-500 to-teal-600" />,
+        <StatusCard key="topology" title="Live Topology" value={metrics.live_topology_devices.toString()} detail="Connected devices" icon={Network} accent="from-cyan-500 to-sky-600" />,
+        <StatusCard key="active" title="Active Connections" value={metrics.active_connections_pretty} detail="Current session count" icon={Activity} accent="from-fuchsia-500 to-violet-600" />,
+        <StatusCard key="latency" title="Latency Monitor" value={`${metrics.latency_ms.toFixed(1)}ms`} detail="Median network latency" icon={Radio} accent="from-amber-400 to-orange-600" />,
+        <StatusCard key="health" title="Network Health" value={`${metrics.network_health_percent.toFixed(1)}%`} detail="Stable and resilient" icon={ShieldAlert} accent="from-emerald-500 to-teal-600" />,
       ]}
     >
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -45,7 +96,7 @@ export function NetworkMonitoringPage() {
         </ChartCard>
         <ChartCard title="Active Connections" subtitle="Current sessions and flows">
           <div className="space-y-3 text-sm text-slate-300">
-            {['12.8K web sessions', '8.1K secure tunnels', '4.2K API streams'].map((item) => (
+            {(connectionRows.length ? connectionRows : ['Awaiting live stream…']).map((item) => (
               <div key={item} className="rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3">{item}</div>
             ))}
           </div>
@@ -55,18 +106,19 @@ export function NetworkMonitoringPage() {
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         <ChartCard title="Device List" subtitle="Critical infrastructure inventory">
           <div className="space-y-2 text-sm text-slate-300">
-            <button onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">fw-edge-01</button>
-            <button onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">sw-core-04</button>
+            {(topSources.length ? topSources : ['Awaiting live stream…']).map((source) => (
+              <button key={source} onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">{source}</button>
+            ))}
           </div>
         </ChartCard>
         <ChartCard title="DNS Requests" subtitle="Recent lookup volume">
-          <div className="rounded-[24px] border border-cyan-400/20 bg-cyan-500/10 p-4 text-sm text-cyan-200">82K requests in 10 min</div>
+          <div className="rounded-[24px] border border-cyan-400/20 bg-cyan-500/10 p-4 text-sm text-cyan-200">{prettyCount(statistics?.total_requests ?? 0)} requests observed</div>
         </ChartCard>
         <ChartCard title="Protocol Distribution" subtitle="Traffic mix">
-          <div className="rounded-[24px] border border-fuchsia-400/20 bg-fuchsia-500/10 p-4 text-sm text-fuchsia-200">TLS 61%, DNS 17%, SSH 12%</div>
+          <div className="rounded-[24px] border border-fuchsia-400/20 bg-fuchsia-500/10 p-4 text-sm text-fuchsia-200">{protocolMix || 'Awaiting live stream…'}</div>
         </ChartCard>
         <ChartCard title="Traffic Timeline" subtitle="Bandwidth and throughput">
-          <div className="rounded-[24px] border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">Peak at 3.4 Tbps</div>
+          <div className="rounded-[24px] border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{(statistics?.attacks_per_minute ?? 0).toFixed(1)} attacks/min peak</div>
         </ChartCard>
       </div>
 

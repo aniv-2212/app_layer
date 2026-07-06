@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import { Sidebar } from './components/layout/Sidebar'
 import { Navbar } from './components/layout/Navbar'
 import { DashboardPage } from './pages/Dashboard'
@@ -49,6 +50,7 @@ function App() {
   return (
     <BrowserRouter>
       <AppShell />
+      <Toaster position="top-right" toastOptions={{ style: { background: '#020617', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.12)' } }} />
     </BrowserRouter>
   )
 }

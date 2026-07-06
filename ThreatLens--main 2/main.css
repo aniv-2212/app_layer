@@ -1,0 +1,140 @@
+/* Base Styles */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: white;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto; /* Replaced hidden with auto to enable vertical scroll */
+    position: relative;
+}
+
+/* Background Video Styling */
+#bg-video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -2; /* Keeps video at the very bottom tier */
+}
+
+/* Dark Overlay for Text Contrast */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6); /* Tint depth adjustment */
+    z-index: -1; /* Layer directly on top of video, below text components */
+}
+
+/* Navbar Styling */
+.navbar {
+    height: 70px;
+    background: rgba(15, 33, 72, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    padding: 0 5%;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+    box-sizing: border-box;
+    z-index: 999; /* Below the menu overlay but above visual elements */
+}
+
+.navbar .logo {
+    margin-left: 20px;
+}
+
+.bar {
+    cursor: pointer;
+    font-size: 24px;
+    color: white;
+}
+
+/* Sidebar Styles */
+.nav-menu {
+    position: fixed; 
+    top: 0; 
+    left: -250px; 
+    width: 250px; 
+    height: 100%;
+    background: #111111; 
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    padding-top: 90px; 
+    z-index: 1000; /* Stays at the absolute top tier */
+    box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+}
+
+.nav-menu.active { 
+    left: 0; 
+}
+
+.nav-menu ul { 
+    list-style: none; 
+    padding: 0; 
+    margin: 0;
+}
+
+.nav-menu ul li a { 
+    display: block; 
+    padding: 15px 25px; 
+    color: #e0e0e0; 
+    text-decoration: none; 
+    font-size: 1.1rem;
+    transition: background 0.2s;
+}
+
+.nav-menu ul li a:hover { 
+    background: #2563eb;
+    color: white;
+}
+
+/* Layout Containers & Sections */
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.content-section {
+    display: none;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 2.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    width: 90%;
+    max-width: 600px;
+    margin: 120px auto 40px auto;
+    text-align: center;
+}
+
+.content-section.active {
+    display: block;
+}
+
+/* Interactive Elements */
+.search-box { display: flex; gap: 10px; margin-top: 2rem; }
+input {
+    flex-grow: 1; padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(0, 0, 0, 0.4); color: white; outline: none;
+}
+button {
+    padding: 1rem 2rem; background: #2563eb; border: none; border-radius: 8px;
+    color: white; font-weight: bold; cursor: pointer; transition: background 0.2s;
+}
+button:hover { background: #1d4ed8; }

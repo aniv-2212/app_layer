@@ -1,7 +1,0 @@
-{
-  "items": [
-    {"id":"vuln-1","name":"CVE-2026-4099","severity":"Critical","asset":"edge-gateway-07","status":"Open","score":"9.8"},
-    {"id":"vuln-2","name":"CVE-2026-4082","severity":"High","asset":"db-prod-01","status":"In Progress","score":"8.2"},
-    {"id":"vuln-3","name":"CVE-2026-4031","severity":"Medium","asset":"app-svc-04","status":"Patched","score":"6.7"}
-  ]
-}

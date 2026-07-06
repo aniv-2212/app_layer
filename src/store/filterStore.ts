@@ -1,21 +1,13 @@
 import { create } from 'zustand'
-import type { FilterState } from '../types'
 
-interface FilterStore {
-  filters: FilterState
-  setFilters: (filters: FilterState) => void
-  updateFilter: (key: keyof FilterState, value: string) => void
+interface FilterState {
+  filters: { country: string; severity: string; attackType: string; status: string; statusCode: string; protocol: string; httpMethod: string; timeRange: string; search: string }
+  setFilters: (filters: Partial<FilterState['filters']>) => void
+  updateFilter: (key: keyof FilterState['filters'], value: string) => void
 }
 
-export const useFilterStore = create<FilterStore>((set) => ({
-  filters: {
-    attackType: 'All',
-    country: 'All',
-    severity: 'All',
-    httpMethod: 'All',
-    statusCode: 'All',
-    timeRange: '24h',
-  },
-  setFilters: (filters) => set({ filters }),
+export const useFilterStore = create<FilterState>((set) => ({
+  filters: { country: 'All', severity: 'All', attackType: 'All', status: 'All', statusCode: 'All', protocol: 'All', httpMethod: 'All', timeRange: '24h', search: '' },
+  setFilters: (newFilters) => set((state) => ({ filters: { ...state.filters, ...newFilters } })),
   updateFilter: (key, value) => set((state) => ({ filters: { ...state.filters, [key]: value } })),
 }))

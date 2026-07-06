@@ -282,6 +282,45 @@ Country-level attack intensity.
 
 Service health and connected Socket.IO client count.
 
+### Custom endpoints — `/api/custom/*`
+
+Self-serve endpoints for checking realtime data live in
+[`app/api/routes/custom.py`](app/api/routes/custom.py). Ships with:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/custom/realtime?limit=N` | One-call snapshot: stream status, severity summary, latest N attacks, heatmap counts |
+| `GET /api/custom/attacks/latest` | The single most recent attack event |
+| `GET /api/custom/buffer` | In-memory buffer counters (stored / capacity / total ingested / severity counts) |
+
+---
+
+## Adding Your Own API
+
+All custom endpoints go in `app/api/routes/custom.py` — no other file needs to change.
+
+1. Pick a data source from `app/api/deps.py` (`get_attack_repo`, `get_statistics_service`, `get_heatmap_service`, `get_replay_service`, `get_stream_service`, `get_country_repo`).
+2. Copy an existing endpoint in `custom.py`, change the path and logic:
+
+```python
+@router.get("/my-endpoint")
+async def my_endpoint(
+    attack_repo: AttackRepository = Depends(get_attack_repo),
+) -> dict:
+    attacks = await attack_repo.get_all()
+    return {"critical": [a for a in attacks if a.severity == "Critical"]}
+```
+
+3. Save the file — when running with `--reload`, uvicorn restarts automatically.
+4. Test it in the interactive docs at <http://localhost:8000/docs> (it appears under the **Custom** tag) or with `curl http://localhost:8000/api/custom/my-endpoint`.
+
+Run the server with hot reload:
+
+```bash
+cd backend
+.venv/bin/python -m uvicorn app.main:asgi_app --port 8000 --reload
+```
+
 ---
 
 ## Attack Types

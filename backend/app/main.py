@@ -22,8 +22,10 @@ async def lifespan(app: FastAPI):
     """Start/stop background attack streaming on app lifecycle."""
     container = get_container()
     await container.stream_service.start()
-    logger.info("CyberAI backend started — streaming live threat events")
+    await container.intel_hub.start_broadcast()
+    logger.info("CyberAI backend started — streaming live threat events + intel feeds")
     yield
+    await container.intel_hub.stop_broadcast()
     await container.stream_service.stop()
     logger.info("CyberAI backend shutdown complete")
 

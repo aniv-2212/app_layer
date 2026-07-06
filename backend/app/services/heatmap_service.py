@@ -74,6 +74,11 @@ class HeatmapService:
             updated_at=utc_now_iso(),
         )
 
-    def to_broadcast_payload(self) -> dict[str, int]:
+    def to_broadcast_payload(self) -> dict:
         """Format heatmap for Socket.IO emission."""
-        return self.get_counts()
+        data = self.get_counts()
+        return {
+            "data": data,
+            "total": sum(data.values()),
+            "updated_at": utc_now_iso(),
+        }
