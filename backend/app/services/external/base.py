@@ -11,8 +11,10 @@ Provides, for every service that subclasses :class:`ExternalService`:
 from __future__ import annotations
 
 import asyncio
+from email.utils import parsedate_to_datetime
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -20,6 +22,32 @@ import httpx
 from app.config.settings import Settings
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_http_detail(service: str, status_code: int) -> str:
+    if status_code == 401:
+        return f"{service} authentication failed (HTTP 401)"
+    if status_code == 403:
+        return f"{service} denied the request (HTTP 403)"
+    if status_code == 429:
+        return f"{service} rate limit exceeded (HTTP 429)"
+    if status_code in {500, 502, 503}:
+        return f"{service} upstream service unavailable (HTTP {status_code})"
+    return f"{service} returned HTTP {status_code}"
+
+
+def _retry_after_delay(value: str | None, fallback: float) -> float:
+    if not value:
+        return fallback
+    if value.isdigit():
+        return float(value)
+    try:
+        retry_at = parsedate_to_datetime(value)
+        if retry_at.tzinfo is None:
+            retry_at = retry_at.replace(tzinfo=timezone.utc)
+        return max(0.0, (retry_at - datetime.now(timezone.utc)).total_seconds())
+    except (TypeError, ValueError, IndexError, OverflowError):
+        return fallback
 
 
 class ExternalServiceError(Exception):
@@ -147,23 +175,24 @@ class ExternalService:
                 response = await client.request(method, url, params=params, headers=headers, data=data)
             except httpx.HTTPError as exc:
                 last_failure = f"network error: {exc.__class__.__name__}"
-                logger.warning("%s attempt %d failed: %s", self.name, attempt + 1, exc)
-                await asyncio.sleep(0.5 * (2**attempt))
+                logger.warning("%s attempt %d failed with %s", self.name, attempt + 1, exc.__class__.__name__)
+                if attempt < retries - 1:
+                    await asyncio.sleep(0.5 * (2**attempt))
                 continue
 
             if response.status_code == 429 or response.status_code >= 500:
-                retry_after = response.headers.get("Retry-After")
-                delay = float(retry_after) if retry_after and retry_after.isdigit() else 0.5 * (2**attempt)
+                delay = _retry_after_delay(response.headers.get("Retry-After"), 0.5 * (2**attempt))
                 last_failure = f"HTTP {response.status_code}"
-                logger.warning("%s attempt %d got %s, retrying in %.1fs", self.name, attempt + 1, response.status_code, delay)
-                await asyncio.sleep(min(delay, 10.0))
+                if attempt < retries - 1:
+                    logger.warning("%s attempt %d got %s, retrying in %.1fs", self.name, attempt + 1, response.status_code, delay)
+                    await asyncio.sleep(min(delay, 10.0))
                 continue
 
             if not response.is_success:
                 self.last_error = f"HTTP {response.status_code}"
                 raise ExternalServiceError(
                     502 if response.status_code >= 500 else response.status_code,
-                    f"{self.name} returned HTTP {response.status_code}: {response.text[:200]}",
+                    _safe_http_detail(self.name, response.status_code),
                 )
 
             try:

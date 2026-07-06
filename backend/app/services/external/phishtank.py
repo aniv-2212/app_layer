@@ -22,6 +22,8 @@ class PhishTankService(ExternalService):
             "/checkurl/",
             method="POST",
             data=data,
+            # PhishTank rejects generic user agents; they require phishtank/<app>
+            headers={"User-Agent": "phishtank/cyberai-soc"},
             cache_key=f"url:{url}",
             ttl=900.0,
         )

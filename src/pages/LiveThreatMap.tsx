@@ -13,78 +13,16 @@ import { ChartCard } from '../components/cards/ChartCard'
 import { StatusCard } from '../components/cards/StatusCard'
 import { buildCountryRollup, selectFilteredAttacks, useLiveThreatStore } from '../store/liveThreatStore'
 import { useSocket } from '../hooks/useSocket'
+import { api } from '../services/api'
 import type { LiveAttack, TimelineBucket } from '../types/liveThreatMap'
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 
-const COUNTRY_COORDS: Record<string, [number, number]> = {
-  Brazil: [-51.9, -14.2],
-  Canada: [-106.3, 56.1],
-  China: [104.2, 35.9],
-  France: [2.2, 46.2],
-  Germany: [10.4, 51.2],
-  India: [78.9, 20.6],
-  Japan: [138.2, 36.2],
-  Russia: [105.3, 61.5],
-  Singapore: [103.8, 1.35],
-  'South Korea': [127.8, 35.9],
-  'United Kingdom': [-3.4, 55.4],
-  'United States': [-95.7, 37.1],
-}
-
 const ATTACK_TYPES = ['SQL Injection', 'XSS', 'Command Injection', 'Credential Stuffing', 'Bot Attack', 'Brute Force', 'RCE', 'DDoS', 'API Abuse']
 const SEVERITIES = ['Low', 'Medium', 'High', 'Critical']
 const STATUSES = ['Blocked', 'Mitigated', 'Detected', 'Investigating', 'Allowed']
-const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 const PROTOCOLS = ['HTTPS', 'HTTP', 'TCP', 'UDP']
-
-function randomItem<T>(items: T[]) {
-  return items[Math.floor(Math.random() * items.length)]
-}
-
-function jitter([longitude, latitude]: [number, number]) {
-  return [longitude + (Math.random() - 0.5) * 7, latitude + (Math.random() - 0.5) * 5] as [number, number]
-}
-
-function buildSyntheticAttack(id: number): LiveAttack {
-  const countries = Object.keys(COUNTRY_COORDS)
-  const source = randomItem(countries)
-  let destination = randomItem(countries)
-  if (destination === source) destination = 'India'
-  const [source_longitude, source_latitude] = jitter(COUNTRY_COORDS[source])
-  const [destination_longitude, destination_latitude] = jitter(COUNTRY_COORDS[destination])
-  const severity = randomItem(SEVERITIES)
-
-  return {
-    id,
-    timestamp: new Date().toISOString(),
-    source_country: source,
-    destination_country: destination,
-    source_latitude,
-    source_longitude,
-    destination_latitude,
-    destination_longitude,
-    source_ip: `185.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-    destination_ip: `10.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-    attack_type: randomItem(ATTACK_TYPES),
-    severity,
-    status: severity === 'Critical' ? randomItem(['Blocked', 'Mitigated', 'Investigating']) : randomItem(STATUSES),
-    endpoint: randomItem(['/login', '/api/auth', '/checkout', '/admin', '/graphql', '/upload']),
-    http_method: randomItem(METHODS),
-    request_count: 120 + Math.floor(Math.random() * 5800),
-    duration_ms: 20 + Math.floor(Math.random() * 1300),
-    confidence: 0.72 + Math.random() * 0.26,
-    risk_score: severity === 'Critical' ? 88 + Math.floor(Math.random() * 12) : 35 + Math.floor(Math.random() * 50),
-    protocol: randomItem(PROTOCOLS),
-    user_agent: 'Synthetic Threat Sensor',
-    asn: `AS${10000 + Math.floor(Math.random() * 70000)}`,
-    city: 'Telemetry edge',
-    isp: 'CyberAI Sensor Grid',
-    country_code: destination.slice(0, 2).toUpperCase(),
-    latitude: source_latitude,
-    longitude: source_longitude,
-  }
-}
+const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat('en', { notation: value > 9999 ? 'compact' : 'standard' }).format(value)
@@ -125,6 +63,9 @@ export function LiveThreatMapPage() {
   const connectionStatus = useLiveThreatStore((state) => state.connectionStatus)
   const replaying = useLiveThreatStore((state) => state.replaying)
   const addAttack = useLiveThreatStore((state) => state.addAttack)
+  const updateStatistics = useLiveThreatStore((state) => state.updateStatistics)
+  const updateHeatmap = useLiveThreatStore((state) => state.updateHeatmap)
+  const updateTimeline = useLiveThreatStore((state) => state.updateTimeline)
   const selectCountry = useLiveThreatStore((state) => state.selectCountry)
   const setFilters = useLiveThreatStore((state) => state.setFilters)
   const setReplaying = useLiveThreatStore((state) => state.setReplaying)
@@ -133,16 +74,60 @@ export function LiveThreatMapPage() {
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   useEffect(() => {
-    if (connected || attacks.length > 0) return
-    const interval = window.setInterval(() => addAttack(buildSyntheticAttack(Date.now())), 1400)
-    return () => window.clearInterval(interval)
-  }, [addAttack, attacks.length, connected])
+    if (attacks.length > 0) return
+    let cancelled = false
+    api.dashboardSnapshot({ limit: 100 })
+      .then((snapshot) => {
+        if (cancelled) return
+        snapshot.attacks.slice().reverse().forEach(addAttack)
+        updateStatistics(snapshot.statistics)
+        updateHeatmap(snapshot.heatmap)
+        updateTimeline(snapshot.replay.items)
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('Backend telemetry unavailable')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [addAttack, attacks.length, updateHeatmap, updateStatistics, updateTimeline])
 
   useEffect(() => {
     if (!replaying) return
-    const interval = window.setInterval(() => addAttack(buildSyntheticAttack(Date.now())), 650)
-    return () => window.clearInterval(interval)
-  }, [addAttack, replaying])
+    let cancelled = false
+    let timeout: number | undefined
+    api.replay({ limit: 100 })
+      .then((payload) => {
+        if (cancelled) return
+        const items = payload.items
+        if (!items.length) {
+          setReplaying(false)
+          return
+        }
+        let index = 0
+        const emitNext = () => {
+          if (cancelled) return
+          addAttack(items[index])
+          index += 1
+          if (index >= items.length) {
+            setReplaying(false)
+            return
+          }
+          timeout = window.setTimeout(emitNext, 650)
+        }
+        emitNext()
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast.error('Replay data unavailable')
+          setReplaying(false)
+        }
+      })
+    return () => {
+      cancelled = true
+      if (timeout) window.clearTimeout(timeout)
+    }
+  }, [addAttack, replaying, setReplaying])
 
   const filteredAttacks = useMemo(() => selectFilteredAttacks(attacks, filters), [attacks, filters])
   const latestAttacks = filteredAttacks.slice(0, 80)

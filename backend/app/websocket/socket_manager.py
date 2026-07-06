@@ -20,9 +20,10 @@ class SocketManager:
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        cors_origins = settings.cors_origin_list or (["*"] if settings.debug else [])
         self._sio = socketio.AsyncServer(
             async_mode="asgi",
-            cors_allowed_origins=settings.cors_origin_list or "*",
+            cors_allowed_origins=cors_origins,
             logger=settings.debug,
             engineio_logger=settings.debug,
         )
@@ -47,6 +48,7 @@ class SocketManager:
                         "heatmap:update",
                         "statistics:update",
                         "timeline:update",
+                        "intel:update",
                     ],
                 },
                 to=sid,
