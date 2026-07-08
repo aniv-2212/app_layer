@@ -3,12 +3,15 @@
 import logging
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from app.api.deps import get_container
 from app.api.routes import api_router
 from app.config.settings import get_settings
 from app.middleware.cors import configure_cors
+
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,8 +64,10 @@ def create_app() -> FastAPI:
     return app
 
 
-app = create_app()
+fastapi_app = create_app()
 
-# ASGI app with Socket.IO mounted at root
+# Wrap with Socket.IO ASGIApp — this handles /socket.io/ requests and
+# forwards everything else to the FastAPI app.  Uvicorn serves this
+# combined ASGI app so WebSocket upgrades reach python-socketio.
 _container = get_container()
-asgi_app = _container.socket_manager.create_asgi_app(app)
+app = _container.socket_manager.create_asgi_app(fastapi_app)
