@@ -211,16 +211,6 @@ npm run preview
 
 ---
 
-## Team VYOMX
-
-| Member | Role |
-|--------|------|
-| **Anmol Verma** | Full Stack Developer — System architecture, frontend/backend development, real-time streaming |
-| **Jasleen Kaur** | ML Engineer — XGBoost model training, feature extraction, heuristic engine |
-| **Lokankshi Gupta** | Frontend Developer — Dashboard pages, threat intel, vulnerability center, UI design |
-| **Karun Behl** | QA & Testing — API testing, integration testing, validation |
-
----
 
 ## License
 
