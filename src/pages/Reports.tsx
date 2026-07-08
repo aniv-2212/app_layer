@@ -1,18 +1,35 @@
 import { BarChart3, FileText, FileUp, Sparkles } from 'lucide-react'
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
-import { Toast } from '../components/ui/Toast'
+import { api, downloadFile } from '../services/api'
 
 export function ReportsPage() {
   const [generating, setGenerating] = useState(false)
-  const [toastOpen, setToastOpen] = useState(false)
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setGenerating(true)
-    setToastOpen(true)
-    window.setTimeout(() => setGenerating(false), 1000)
+    try {
+      const payload = await api.exportJson()
+      downloadFile('cyberai-report.json', JSON.stringify(payload, null, 2), 'application/json')
+      toast.success('Report generated')
+    } catch {
+      toast.error('Report generation failed')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleExportDate = async (label: string) => {
+    try {
+      const csv = await api.exportCsv()
+      downloadFile(`cyberai-report-${label}.csv`, csv, 'text/csv')
+      toast.success(`Report ${label} exported`)
+    } catch {
+      toast.error('Export failed')
+    }
   }
 
   return (
@@ -41,7 +58,7 @@ export function ReportsPage() {
         <ChartCard title="Report Cards" subtitle="Core report packages">
           <div className="space-y-3 text-sm text-slate-300">
             {['Security posture summary', 'Threat intelligence digest', 'Executive incident overview'].map((item) => (
-              <button key={item} onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">{item}</button>
+              <button key={item} onClick={() => handleGenerate()} className="w-full rounded-[20px] border border-white/10 bg-slate-900/70 px-4 py-3 text-left">{item}</button>
             ))}
           </div>
         </ChartCard>
@@ -67,12 +84,11 @@ export function ReportsPage() {
 
       <ChartCard title="Historical Reports" subtitle="Previously generated packages">
         <div className="flex flex-wrap gap-3">
-          <button onClick={() => setToastOpen(true)} className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">2026-06-30</button>
-          <button onClick={() => setToastOpen(true)} className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-3 py-2 text-sm text-fuchsia-200">2026-06-23</button>
-          <button onClick={() => setToastOpen(true)} className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">2026-06-14</button>
+          <button onClick={() => handleExportDate('2026-06-30')} className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">2026-06-30</button>
+          <button onClick={() => handleExportDate('2026-06-23')} className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-3 py-2 text-sm text-fuchsia-200">2026-06-23</button>
+          <button onClick={() => handleExportDate('2026-06-14')} className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">2026-06-14</button>
         </div>
       </ChartCard>
-      <Toast message={generating ? 'Report generation in progress' : 'Report generated'} open={toastOpen} />
     </PageShell>
   )
 }

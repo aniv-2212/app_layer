@@ -1,11 +1,13 @@
-import { Activity, AlertTriangle, Bot, FileText, Globe2, LayoutDashboard, LogOut, Radar, ShieldCheck, ShieldAlert, SlidersHorizontal, Sparkles, TerminalSquare, TrendingUp, UserCircle2 } from 'lucide-react'
+import { Activity, AlertTriangle, Bot, FileText, Globe2, Home, LayoutDashboard, LogOut, Radar, ScanSearch, ShieldCheck, ShieldAlert, SlidersHorizontal, Sparkles, TerminalSquare, TrendingUp, UserCircle2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { NavLink } from 'react-router-dom'
 
 const items = [
+  { label: 'Home', to: '/', icon: Home },
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { label: 'Live Threat Map', to: '/live-threat-map', icon: Globe2 },
   { label: 'Application Layer', to: '/application-layer', icon: ShieldCheck },
+  { label: 'URL Scanner', to: '/url-scanner', icon: ScanSearch },
   { label: 'Threat Intelligence', to: '/threat-intelligence', icon: Radar },
   { label: 'Attack Analytics', to: '/attack-analytics', icon: TrendingUp },
   { label: 'Vulnerability Center', to: '/vulnerability-center', icon: ShieldAlert },
@@ -34,7 +36,7 @@ export function Sidebar() {
         {items.map((item) => {
           const Icon = item.icon
           return (
-            <NavLink key={item.label} to={item.to} className={({ isActive }) => `flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm transition ${isActive ? 'bg-white/15 text-white shadow-lg shadow-cyan-500/10' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`}>
+            <NavLink key={item.label} to={item.to} end={item.to === '/'} className={({ isActive }) => `flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm transition ${isActive ? 'bg-white/15 text-white shadow-lg shadow-cyan-500/10' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`}>
               <Icon className="h-4 w-4" />
               <span>{item.label}</span>
             </NavLink>

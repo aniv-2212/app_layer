@@ -1,31 +1,36 @@
 import { useState } from 'react'
-import { Search } from 'lucide-react'
-import { api } from '../../services/api'
+import { ArrowRight, Search } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { urlScannerApi, UrlScannerApiError } from '../../features/url-scanner/services/urlScannerApi'
+import type { ScanStatusClass } from '../../features/url-scanner/types'
+
+const RESULT_STYLES: Record<ScanStatusClass, string> = {
+  safe: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200',
+  warning: 'border-amber-400/20 bg-amber-500/10 text-amber-200',
+  danger: 'border-rose-400/20 bg-rose-500/10 text-rose-200',
+}
 
 export function UrlScanner() {
   const [url, setUrl] = useState('')
   const [scanning, setScanning] = useState(false)
-  const [result, setResult] = useState<{ type: 'safe' | 'malicious', message: string } | null>(null)
+  const [result, setResult] = useState<{ statusClass: ScanStatusClass; message: string } | null>(null)
 
   const handleScan = async () => {
-    if (!url) return
+    if (!url.trim()) return
     setScanning(true)
     setResult(null)
 
     try {
-      const report = await api.phishtankCheck(url)
-      if (report.in_database && report.valid) {
-        setResult({
-          type: 'malicious',
-          message: `Known phishing URL (PhishTank #${report.phish_id ?? 'n/a'}${report.verified ? ', verified' : ''}).`,
-        })
-      } else if (report.in_database) {
-        setResult({ type: 'safe', message: 'URL is in PhishTank but not flagged as a valid phish.' })
-      } else {
-        setResult({ type: 'safe', message: 'URL not found in the PhishTank phishing database.' })
-      }
+      const scan = await urlScannerApi.scan(url.trim(), false)
+      setResult({
+        statusClass: scan.status_class,
+        message: `${scan.verdict} — risk score ${Math.round(scan.risk_percentage)}%${scan.model_used ? ' (ML model)' : ''}.`,
+      })
     } catch (error) {
-      setResult({ type: 'malicious', message: `Scan failed: ${error instanceof Error ? error.message : 'backend unreachable'}` })
+      setResult({
+        statusClass: 'danger',
+        message: error instanceof UrlScannerApiError ? error.message : 'Scan failed: backend unreachable.',
+      })
     } finally {
       setScanning(false)
     }
@@ -47,22 +52,23 @@ export function UrlScanner() {
         </div>
         <button
           onClick={handleScan}
-          disabled={scanning || !url}
+          disabled={scanning || !url.trim()}
           className="w-full sm:w-auto whitespace-nowrap rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-6 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50"
         >
           {scanning ? 'Scanning...' : 'Scan Now'}
         </button>
       </div>
-      
+
       {result && (
-        <div className={`rounded-[20px] border px-4 py-3 text-sm ${
-          result.type === 'safe' 
-            ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200' 
-            : 'border-rose-400/20 bg-rose-500/10 text-rose-200'
-        }`}>
+        <div className={`rounded-[20px] border px-4 py-3 text-sm ${RESULT_STYLES[result.statusClass]}`}>
           {result.message}
         </div>
       )}
+
+      <Link to="/url-scanner" className="inline-flex items-center gap-1.5 text-sm text-cyan-300 hover:text-cyan-200">
+        Open full URL Scanner — features & domain intelligence
+        <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
     </div>
   )
 }

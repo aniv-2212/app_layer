@@ -1,23 +1,37 @@
 import { Filter, Logs, Search, ShieldAlert, TerminalSquare } from 'lucide-react'
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { PageShell } from '../components/layout/PageShell'
 import { StatusCard } from '../components/cards/StatusCard'
 import { ChartCard } from '../components/cards/ChartCard'
-import { Toast } from '../components/ui/Toast'
+import { api, downloadFile } from '../services/api'
 import { useAnalyticsStore } from '../store/analyticsStore'
 
 export function LogAnalysisPage() {
   const [query, setQuery] = useState('source=auth AND action=login AND result=fail')
-  const [toastOpen, setToastOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
   const timeRange = useAnalyticsStore((state) => state.timeRange)
+
+  const handleExportLogs = async () => {
+    setBusy(true)
+    try {
+      const csv = await api.exportCsv()
+      downloadFile('cyberai-logs.csv', csv, 'text/csv')
+      toast.success('Logs exported')
+    } catch {
+      toast.error('Export failed')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <PageShell
       title="Log Analysis"
       subtitle="Search, filter, and inspect authentication, firewall, OS, and API logs from one workspace."
       actions={
-        <button onClick={() => setToastOpen(true)} className="rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white">
-          Export Logs
+        <button onClick={handleExportLogs} disabled={busy} className="rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
+          {busy ? 'Exporting…' : 'Export Logs'}
         </button>
       }
       filters={
@@ -39,9 +53,9 @@ export function LogAnalysisPage() {
         </ChartCard>
         <ChartCard title="Filters" subtitle="Logical views by source and severity">
           <div className="flex flex-wrap gap-3">
-            <button onClick={() => setToastOpen(true)} className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">Auth</button>
-            <button onClick={() => setToastOpen(true)} className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-3 py-2 text-sm text-fuchsia-200">Firewall</button>
-            <button onClick={() => setToastOpen(true)} className="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">Windows</button>
+            <button onClick={() => toast.success('Auth filter applied')} className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">Auth</button>
+            <button onClick={() => toast.success('Firewall filter applied')} className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 px-3 py-2 text-sm text-fuchsia-200">Firewall</button>
+            <button onClick={() => toast.success('Windows filter applied')} className="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">Windows</button>
           </div>
         </ChartCard>
       </div>
@@ -68,12 +82,11 @@ export function LogAnalysisPage() {
         <div className="rounded-[24px] border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
           <div className="mb-3 flex items-center gap-2"><Logs className="h-4 w-4 text-cyan-300" /> Log explorer query builder</div>
           <div className="space-y-2">
-            <button onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-950/80 px-4 py-3 text-left">{'event.type = "auth" AND severity >= 3'}</button>
-            <button onClick={() => setToastOpen(true)} className="w-full rounded-[20px] border border-white/10 bg-slate-950/80 px-4 py-3 text-left">{'source = "firewall" OR source = "api"'}</button>
+            <button onClick={() => toast.success('Query applied')} className="w-full rounded-[20px] border border-white/10 bg-slate-950/80 px-4 py-3 text-left">{'event.type = "auth" AND severity >= 3'}</button>
+            <button onClick={() => toast.success('Query applied')} className="w-full rounded-[20px] border border-white/10 bg-slate-950/80 px-4 py-3 text-left">{'source = "firewall" OR source = "api"'}</button>
           </div>
         </div>
       </ChartCard>
-      <Toast message={`Query ready: ${query}`} open={toastOpen} />
     </PageShell>
   )
 }

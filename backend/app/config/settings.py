@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     intel_cache_ttl: float = 300.0  # seconds
     intel_broadcast_interval: float = 120.0  # seconds between intel:update emits
 
+    # -- URL Scanner --
+    url_scanner_history_size: int = 200
+
+    # -- AI Assistant (OpenAI-compatible provider) --
+    ai_provider: str = "openai"
+    ai_api_key: str | None = None
+    ai_model: str = "gpt-4o-mini"
+
     # CORS origins (comma-separated)
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 

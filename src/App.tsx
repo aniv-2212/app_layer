@@ -1,7 +1,9 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { Sidebar } from './components/layout/Sidebar'
 import { Navbar } from './components/layout/Navbar'
+import { LandingPage } from './pages/LandingPage'
+import { TeamPage } from './pages/TeamPage'
 import { DashboardPage } from './pages/Dashboard'
 import { LiveThreatMapPage } from './pages/LiveThreatMap'
 import { ThreatIntelligencePage } from './pages/ThreatIntelligence'
@@ -15,6 +17,9 @@ import { LogAnalysisPage } from './pages/LogAnalysis'
 import { ReportsPage } from './pages/Reports'
 import { SettingsPage } from './pages/Settings'
 import { ApplicationLayerPage } from './pages/ApplicationLayer'
+import { UrlScannerPage } from './pages/UrlScanner'
+import { ChatBubble } from './features/ai-assistant/components/ChatBubble'
+import { ChatWindow } from './features/ai-assistant/components/ChatWindow'
 import './App.css'
 
 function AppShell() {
@@ -25,10 +30,10 @@ function AppShell() {
         <main className="flex-1">
           <Navbar />
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/live-threat-map" element={<LiveThreatMapPage />} />
             <Route path="/application-layer" element={<ApplicationLayerPage />} />
+            <Route path="/url-scanner" element={<UrlScannerPage />} />
             <Route path="/threat-intelligence" element={<ThreatIntelligencePage />} />
             <Route path="/attack-analytics" element={<AttackAnalyticsPage />} />
             <Route path="/vulnerability-center" element={<VulnerabilityCenterPage />} />
@@ -42,14 +47,27 @@ function AppShell() {
           </Routes>
         </main>
       </div>
+      <ChatBubble />
+      <ChatWindow />
     </div>
   )
+}
+
+function AppLayout() {
+  const location = useLocation()
+  if (location.pathname === '/') {
+    return <LandingPage />
+  }
+  if (location.pathname === '/team') {
+    return <TeamPage />
+  }
+  return <AppShell />
 }
 
 function App() {
   return (
     <BrowserRouter>
-      <AppShell />
+      <AppLayout />
       <Toaster position="top-right" toastOptions={{ style: { background: '#020617', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.12)' } }} />
     </BrowserRouter>
   )

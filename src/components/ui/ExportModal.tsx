@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { FileDown, X } from 'lucide-react'
+import { FileDown, Loader, X } from 'lucide-react'
 import { useState } from 'react'
+import toast from 'react-hot-toast'
+import { api, downloadFile } from '../../services/api'
 
 type ExportModalProps = {
   open: boolean
@@ -9,6 +11,28 @@ type ExportModalProps = {
 
 export function ExportModal({ open, onClose }: ExportModalProps) {
   const [selected, setSelected] = useState('PDF')
+  const [busy, setBusy] = useState(false)
+
+  const handleExport = async () => {
+    setBusy(true)
+    try {
+      if (selected === 'CSV') {
+        const csv = await api.exportCsv()
+        downloadFile('cyberai-export.csv', csv, 'text/csv')
+      } else if (selected === 'JSON') {
+        const payload = await api.exportJson()
+        downloadFile('cyberai-export.json', JSON.stringify(payload, null, 2), 'application/json')
+      } else {
+        toast.success('Opening print dialog for PDF export')
+        window.print()
+      }
+      onClose()
+    } catch {
+      toast.error('Export failed — backend may be unavailable')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -29,7 +53,10 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
                 </button>
               ))}
             </div>
-            <button onClick={onClose} className="w-full rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white">Export {selected}</button>
+            <button onClick={handleExport} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
+              {busy ? <Loader className="h-4 w-4 animate-spin" /> : null}
+              {busy ? 'Exporting…' : `Export ${selected}`}
+            </button>
           </motion.div>
         </motion.div>
       ) : null}
