@@ -1,26 +1,28 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { Sidebar } from './components/layout/Sidebar'
 import { Navbar } from './components/layout/Navbar'
-import { LandingPage } from './pages/LandingPage'
-import { TeamPage } from './pages/TeamPage'
-import { DashboardPage } from './pages/Dashboard'
-import { LiveThreatMapPage } from './pages/LiveThreatMap'
-import { ThreatIntelligencePage } from './pages/ThreatIntelligence'
-import { AttackAnalyticsPage } from './pages/AttackAnalytics'
-import { VulnerabilityCenterPage } from './pages/VulnerabilityCenter'
-import { AIThreatDetectionPage } from './pages/AIThreatDetection'
-import { MalwareAnalysisPage } from './pages/MalwareAnalysis'
-import { NetworkMonitoringPage } from './pages/NetworkMonitoring'
-import { IncidentResponsePage } from './pages/IncidentResponse'
-import { LogAnalysisPage } from './pages/LogAnalysis'
-import { ReportsPage } from './pages/Reports'
-import { SettingsPage } from './pages/Settings'
-import { ApplicationLayerPage } from './pages/ApplicationLayer'
-import { UrlScannerPage } from './pages/UrlScanner'
 import { ChatBubble } from './features/ai-assistant/components/ChatBubble'
 import { ChatWindow } from './features/ai-assistant/components/ChatWindow'
 import './App.css'
+
+const LandingPage = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })))
+const TeamPage = lazy(() => import('./pages/TeamPage').then(m => ({ default: m.TeamPage })))
+const DashboardPage = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.DashboardPage })))
+const LiveThreatMapPage = lazy(() => import('./pages/LiveThreatMap').then(m => ({ default: m.LiveThreatMapPage })))
+const ThreatIntelligencePage = lazy(() => import('./pages/ThreatIntelligence').then(m => ({ default: m.ThreatIntelligencePage })))
+const AttackAnalyticsPage = lazy(() => import('./pages/AttackAnalytics').then(m => ({ default: m.AttackAnalyticsPage })))
+const VulnerabilityCenterPage = lazy(() => import('./pages/VulnerabilityCenter').then(m => ({ default: m.VulnerabilityCenterPage })))
+const AIThreatDetectionPage = lazy(() => import('./pages/AIThreatDetection').then(m => ({ default: m.AIThreatDetectionPage })))
+const MalwareAnalysisPage = lazy(() => import('./pages/MalwareAnalysis').then(m => ({ default: m.MalwareAnalysisPage })))
+const NetworkMonitoringPage = lazy(() => import('./pages/NetworkMonitoring').then(m => ({ default: m.NetworkMonitoringPage })))
+const IncidentResponsePage = lazy(() => import('./pages/IncidentResponse').then(m => ({ default: m.IncidentResponsePage })))
+const LogAnalysisPage = lazy(() => import('./pages/LogAnalysis').then(m => ({ default: m.LogAnalysisPage })))
+const ReportsPage = lazy(() => import('./pages/Reports').then(m => ({ default: m.ReportsPage })))
+const SettingsPage = lazy(() => import('./pages/Settings').then(m => ({ default: m.SettingsPage })))
+const ApplicationLayerPage = lazy(() => import('./pages/ApplicationLayer').then(m => ({ default: m.ApplicationLayerPage })))
+const UrlScannerPage = lazy(() => import('./pages/UrlScanner').then(m => ({ default: m.UrlScannerPage })))
 
 function AppShell() {
   return (
@@ -29,22 +31,24 @@ function AppShell() {
         <Sidebar />
         <main className="flex-1">
           <Navbar />
-          <Routes>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/live-threat-map" element={<LiveThreatMapPage />} />
-            <Route path="/application-layer" element={<ApplicationLayerPage />} />
-            <Route path="/url-scanner" element={<UrlScannerPage />} />
-            <Route path="/threat-intelligence" element={<ThreatIntelligencePage />} />
-            <Route path="/attack-analytics" element={<AttackAnalyticsPage />} />
-            <Route path="/vulnerability-center" element={<VulnerabilityCenterPage />} />
-            <Route path="/ai-threat-detection" element={<AIThreatDetectionPage />} />
-            <Route path="/malware-analysis" element={<MalwareAnalysisPage />} />
-            <Route path="/network-monitoring" element={<NetworkMonitoringPage />} />
-            <Route path="/incident-response" element={<IncidentResponsePage />} />
-            <Route path="/log-analysis" element={<LogAnalysisPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Routes>
+          <Suspense fallback={<div className="flex h-96 items-center justify-center text-slate-400">Loading...</div>}>
+            <Routes>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/live-threat-map" element={<LiveThreatMapPage />} />
+              <Route path="/application-layer" element={<ApplicationLayerPage />} />
+              <Route path="/url-scanner" element={<UrlScannerPage />} />
+              <Route path="/threat-intelligence" element={<ThreatIntelligencePage />} />
+              <Route path="/attack-analytics" element={<AttackAnalyticsPage />} />
+              <Route path="/vulnerability-center" element={<VulnerabilityCenterPage />} />
+              <Route path="/ai-threat-detection" element={<AIThreatDetectionPage />} />
+              <Route path="/malware-analysis" element={<MalwareAnalysisPage />} />
+              <Route path="/network-monitoring" element={<NetworkMonitoringPage />} />
+              <Route path="/incident-response" element={<IncidentResponsePage />} />
+              <Route path="/log-analysis" element={<LogAnalysisPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </Suspense>
         </main>
       </div>
       <ChatBubble />

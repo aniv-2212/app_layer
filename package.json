@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@deck.gl/mapbox": "^9.3.5",
     "@tailwindcss/vite": "^4.3.2",
     "@tanstack/react-table": "^8.21.3",
     "axios": "^1.18.1",

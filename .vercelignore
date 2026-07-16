@@ -1,0 +1,53 @@
+# Backend — deployed separately on Railway / Render / Cloud Run
+backend/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+.env.*.local
+.env.example
+
+# Node (Vercel installs deps automatically — keep local node_modules excluded)
+node_modules/
+
+# Git
+.git/
+.gitignore
+
+# Build artifacts (Vercel rebuilds)
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs & design (not needed at runtime)
+VIVA_PRESENTATION.md
+API_CONFIGURATION.md
+README.md
+
+# Stray directories from zip extracts / downloads
+bla-_blu_bi-main/
+ThreatLens--main 2/
+
+# Logs
+*.log
+logs/
+
+# Lockfiles (Vercel uses its own)
+package-lock.json

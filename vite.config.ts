@@ -4,4 +4,16 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('@deck.gl') || id.includes('deck.gl')) return 'deckgl'
+          if (id.includes('maplibre-gl') || id.includes('react-map-gl')) return 'maplibre'
+          if (id.includes('echarts')) return 'echarts'
+          if (id.includes('react-router')) return 'router'
+        },
+      },
+    },
+  },
 })
