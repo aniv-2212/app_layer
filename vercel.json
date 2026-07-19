@@ -1,5 +1,6 @@
 {
   "framework": "vite",
+  "rootDirectory": ".",
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
